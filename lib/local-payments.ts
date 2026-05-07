@@ -13,6 +13,13 @@ type PendingPayment = {
   created_at: string;
 };
 
+export type FinalizedPayment = {
+  status: "paid" | "failed";
+  orderId: string;
+  whatsappUrl: string;
+  whatsappMessage: string;
+};
+
 export async function createPendingPayment(order: Omit<PendingPaymentOrder, "id">) {
   await fs.mkdir(dataDir, { recursive: true });
   const payments = await readPendingPayments();
@@ -56,16 +63,49 @@ export async function finalizePendingPayment(paymentId: string) {
   const payments = await readPendingPayments();
   const payment = payments[paymentId];
   if (!payment?.invoiceId) {
-    return { status: "failed" as const, orderId: "" };
+    return emptyFinalizedPayment("failed");
   }
 
   const invoice = await fetchMoyasarInvoice(payment.invoiceId);
   if (invoice?.status !== "paid") {
-    return { status: "failed" as const, orderId: "" };
+    return emptyFinalizedPayment("failed");
   }
 
   const orderId = await markMoyasarInvoicePaid(payment.invoiceId, paymentId);
-  return { status: "paid" as const, orderId: orderId || "" };
+  const whatsappMessage = buildPaidOrderWhatsappMessage(payment.order, orderId || "");
+  return {
+    status: "paid" as const,
+    orderId: orderId || "",
+    whatsappMessage,
+    whatsappUrl: `https://wa.me/966545199610?text=${encodeURIComponent(whatsappMessage)}`,
+  };
+}
+
+function emptyFinalizedPayment(status: "failed"): FinalizedPayment {
+  return {
+    status,
+    orderId: "",
+    whatsappMessage: "",
+    whatsappUrl: "",
+  };
+}
+
+function buildPaidOrderWhatsappMessage(order: PendingPaymentOrder, orderId: string) {
+  return [
+    "Roma Pastry Paid Order",
+    orderId ? `Order: ${orderId}` : "",
+    "",
+    "Products:",
+    ...order.items.map((item) => `${item.quantity} x ${item.name_ar} / ${item.name_en} - ${item.price * item.quantity} ${order.currency}`),
+    "",
+    `Total: ${order.total} ${order.currency}`,
+    "Status: Paid",
+    "",
+    `Customer: ${order.customerName || "-"}`,
+    `Phone: ${order.customerPhone || "-"}`,
+    `Address: ${order.deliveryAddress || "-"}`,
+    `Details: ${order.notes || "-"}`,
+  ].join("\n");
 }
 
 async function readPendingPayments(): Promise<Record<string, PendingPayment>> {

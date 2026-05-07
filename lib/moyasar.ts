@@ -48,7 +48,7 @@ export async function createMoyasarInvoice(input: {
       currency: input.order.currency,
       description: `Roma Pastry order ${input.order.id}`,
       success_url: `${input.origin}/payment/thank-you?payment_id=${encodeURIComponent(input.order.id)}`,
-      back_url: `${input.origin}/menu?payment=cancelled`,
+      back_url: `${input.origin}/payment/thank-you?payment=failed`,
       callback_url: `${input.origin}/api/payments/moyasar/callback`,
       metadata: {
         payment_id: input.order.id,

@@ -31,7 +31,20 @@ export default async function ThankYouPage({
             ? `Your paid order${result.orderId ? ` (${result.orderId})` : ""} has been saved.`
             : "Please return to the menu and try again, or send the order through WhatsApp."}
         </p>
+        {paid && result.whatsappUrl ? (
+          <div className="mt-5 rounded-xl border border-[#d6ad60]/20 bg-[#140b08]/70 p-4 text-start">
+            <p className="text-sm font-bold text-[#f4d8a4]">WhatsApp message ready</p>
+            <pre className="mt-3 max-h-44 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[#0f0705] p-3 text-xs leading-6 text-[#cdbd9f]">
+              {result.whatsappMessage}
+            </pre>
+          </div>
+        ) : null}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          {paid && result.whatsappUrl ? (
+            <a className="rounded-xl border border-[#d6ad60]/45 bg-[#21110d]/70 px-5 py-3 text-sm font-bold text-[#f4d8a4] transition hover:-translate-y-0.5 hover:bg-[#2a1511]" href={result.whatsappUrl} target="_blank" rel="noreferrer">
+              Send WhatsApp
+            </a>
+          ) : null}
           <Link className="rounded-xl bg-gradient-to-r from-[#c99b4f] via-[#f4d8a4] to-[#c99b4f] px-5 py-3 text-sm font-black text-[#140b08] shadow-xl shadow-[#d6ad60]/15 transition hover:-translate-y-0.5" href="/menu">
             Back to menu
           </Link>

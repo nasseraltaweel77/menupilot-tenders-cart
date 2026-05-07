@@ -112,35 +112,83 @@ export function MenuView({
     );
   }
 
-  function checkout() {
+  function buildOrderNotes() {
+    return [
+      customer.deliveryDate ? `Delivery date: ${customer.deliveryDate}` : "",
+      customer.deliveryTime ? `Delivery time: ${customer.deliveryTime}` : "",
+      customer.locationLink ? `Location: ${customer.locationLink}` : "",
+      customer.notes,
+    ].filter(Boolean).join(" | ");
+  }
+
+  function validateCheckout() {
+    if (!cart.length) {
+      setError(t.emptyCart);
+      return false;
+    }
+
+    if (!customer.name || !customer.phone || !customer.deliveryDate || !customer.deliveryTime || !customer.address) {
+      setError(locale === "ar" ? "يرجى إكمال بيانات الطلب." : "Please complete the checkout details.");
+      return false;
+    }
+
+    return true;
+  }
+
+  async function saveOrder() {
+    const id = await createOrder({
+      restaurantId: restaurant.id,
+      customerName: customer.name,
+      customerPhone: customer.phone,
+      deliveryAddress: customer.address,
+      notes: buildOrderNotes(),
+      total,
+      items: cart,
+    });
+    setOrderId(id);
+    setShowOrderToast(true);
+    window.setTimeout(() => setShowOrderToast(false), 3600);
+    return id;
+  }
+
+  function buildWhatsappMessage(savedOrderId?: string) {
+    return [
+      "Roma Pastry Order",
+      savedOrderId ? `Order: ${savedOrderId}` : "",
+      "",
+      "Products:",
+      ...cart.map((item) => `${item.quantity} x ${item.name_ar} / ${item.name_en} - ${formatMoney(item.price * item.quantity, restaurant.currency, "en")}`),
+      "",
+      `Total: ${formatMoney(total, restaurant.currency, "en")}`,
+      "",
+      `Customer: ${customer.name || "-"}`,
+      `Phone: ${customer.phone || "-"}`,
+      `Delivery date: ${customer.deliveryDate || "-"}`,
+      `Delivery time: ${customer.deliveryTime || "-"}`,
+      `Address: ${customer.address || "-"}`,
+      `Location: ${customer.locationLink || "-"}`,
+      `Notes: ${customer.notes || "-"}`,
+    ].join("\n");
+  }
+
+  function sendViaWhatsapp() {
     setError("");
     startTransition(async () => {
       try {
-        const id = await createOrder({
-          restaurantId: restaurant.id,
-          customerName: customer.name,
-          customerPhone: customer.phone,
-          deliveryAddress: customer.address,
-          notes: [
-            customer.deliveryDate ? `Delivery date: ${customer.deliveryDate}` : "",
-            customer.deliveryTime ? `Delivery time: ${customer.deliveryTime}` : "",
-            customer.locationLink ? `Location: ${customer.locationLink}` : "",
-            customer.notes,
-          ].filter(Boolean).join(" | "),
-          total,
-          items: cart,
-        });
-        setOrderId(id);
-        setShowOrderToast(true);
-        window.setTimeout(() => setShowOrderToast(false), 3600);
+        if (!validateCheckout()) return;
+        const id = await saveOrder();
+        const url = `https://wa.me/${restaurant.phone}?text=${encodeURIComponent(buildWhatsappMessage(id))}`;
+        window.open(url, "_blank", "noopener,noreferrer");
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : locale === "ar" ? "تعذر حفظ الطلب." : "Unable to create order.");
+        setError(caught instanceof Error ? caught.message : locale === "ar" ? "تعذر حفظ الطلب." : "Unable to save order.");
       }
     });
   }
 
   async function payNow() {
     setPaymentError("");
+    setError("");
+    if (!validateCheckout()) return;
     setPaymentPending(true);
 
     try {
@@ -152,12 +200,7 @@ export function MenuView({
           customerName: customer.name,
           customerPhone: customer.phone,
           deliveryAddress: customer.address,
-          notes: [
-            customer.deliveryDate ? `Delivery date: ${customer.deliveryDate}` : "",
-            customer.deliveryTime ? `Delivery time: ${customer.deliveryTime}` : "",
-            customer.locationLink ? `Location: ${customer.locationLink}` : "",
-            customer.notes,
-          ].filter(Boolean).join(" | "),
+          notes: buildOrderNotes(),
           total,
           currency: restaurant.currency,
           items: cart,
@@ -175,26 +218,8 @@ export function MenuView({
       setPaymentPending(false);
     }
   }
-
-  const whatsappMessage = [
-    "Roma Pastry Order",
-    orderId ? `Order: ${orderId}` : "",
-    "",
-    "Products:",
-    ...cart.map((item) => `${item.quantity} x ${item.name_ar} / ${item.name_en} - ${formatMoney(item.price * item.quantity, restaurant.currency, "en")}`),
-    "",
-    `Total: ${formatMoney(total, restaurant.currency, "en")}`,
-    "",
-    `Customer: ${customer.name || "-"}`,
-    `Phone: ${customer.phone || "-"}`,
-    `Delivery date: ${customer.deliveryDate || "-"}`,
-    `Delivery time: ${customer.deliveryTime || "-"}`,
-    `Address: ${customer.address || "-"}`,
-    `Location: ${customer.locationLink || "-"}`,
-    `Notes: ${customer.notes || "-"}`,
-  ].join("\n");
-
-  const whatsappUrl = `https://wa.me/${restaurant.phone}?text=${encodeURIComponent(whatsappMessage)}`;
+  
+  const whatsappUrl = `https://wa.me/${restaurant.phone}`;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#120806] text-[#fff7e8]" dir={dir}>
@@ -312,7 +337,7 @@ export function MenuView({
             {error ? <p className="mb-4 break-words rounded-xl bg-[#6f1d2b]/40 px-3 py-2 text-sm font-semibold text-[#fff7e8]">{error}</p> : null}
             {paymentError ? <p className="mb-4 break-words rounded-xl bg-[#6f1d2b]/40 px-3 py-2 text-sm font-semibold text-[#fff7e8]">{paymentError}</p> : null}
 
-            <form action={checkout} className="space-y-3.5 sm:space-y-4">
+            <div className="space-y-3.5 sm:space-y-4">
               <input className={checkoutFieldClass} name="name" placeholder={t.name} value={customer.name} onChange={(event) => updateCustomer("name", event.target.value)} required />
               <input className={checkoutFieldClass} name="phone" inputMode="tel" placeholder={t.phone} value={customer.phone} onChange={(event) => updateCustomer("phone", event.target.value)} required />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -357,15 +382,9 @@ export function MenuView({
               ) : null}
               <input className={checkoutFieldClass} name="locationLink" placeholder={t.locationField} value={customer.locationLink} readOnly aria-label={t.locationField} />
               <textarea className={`${checkoutFieldClass} min-h-24`} name="notes" placeholder={t.notes} value={customer.notes} onChange={(event) => updateCustomer("notes", event.target.value)} />
-              <button className="flex min-h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#c99b4f] via-[#f4d8a4] to-[#c99b4f] px-4 py-3 text-sm font-black text-[#140b08] shadow-xl shadow-[#d6ad60]/15 transition hover:-translate-y-0.5 hover:shadow-[#d6ad60]/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70" disabled={!cart.length || isPending}>
-                {isPending ? t.savingOrder : t.placeOrder}
-              </button>
-            </form>
-            <a className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl border border-[#d6ad60]/45 bg-[#21110d]/60 px-4 py-3 text-sm font-bold text-[#f4d8a4] shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-[#d6ad60]/10 active:scale-[0.98]" href={whatsappUrl} target="_blank" rel="noreferrer">
-              {t.sendWhatsapp}
-            </a>
+            </div>
             <button
-              className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#f4d8a4] via-[#d6ad60] to-[#8a2638] px-4 py-3 text-sm font-black text-[#140b08] shadow-xl shadow-[#d6ad60]/20 transition hover:-translate-y-0.5 hover:shadow-[#d6ad60]/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-4 flex min-h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#f4d8a4] via-[#d6ad60] to-[#8a2638] px-4 py-3 text-sm font-black text-[#140b08] shadow-xl shadow-[#d6ad60]/20 transition hover:-translate-y-0.5 hover:shadow-[#d6ad60]/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
               type="button"
               onClick={payNow}
               disabled={!cart.length || paymentPending}
@@ -373,6 +392,9 @@ export function MenuView({
               {paymentPending ? t.paymentCreating : t.payNow}
             </button>
             <p className="mt-2 text-center text-xs font-semibold text-[#cdbd9f]">{t.paymentMethods}</p>
+            <button className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl border border-[#d6ad60]/45 bg-[#21110d]/60 px-4 py-3 text-sm font-bold text-[#f4d8a4] shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-[#d6ad60]/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70" type="button" onClick={sendViaWhatsapp} disabled={!cart.length || isPending}>
+              {isPending ? t.savingOrder : t.sendWhatsapp}
+            </button>
           </aside>
         </div>
       </section>
