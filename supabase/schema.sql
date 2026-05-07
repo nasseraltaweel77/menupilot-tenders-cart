@@ -48,15 +48,53 @@ create table public.orders (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.roma_orders (
+  id text primary key,
+  order_data jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.roma_pending_payments (
+  id text primary key,
+  invoice_id text unique,
+  status text not null default 'initiated',
+  payment_data jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.roma_item_overrides (
+  item_id text primary key,
+  item_data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.roma_item_images (
+  item_id text primary key,
+  image_url text not null,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.roma_deleted_items (
+  item_id text primary key,
+  deleted_at timestamptz not null default now()
+);
+
 create index menu_categories_restaurant_id_idx on public.menu_categories(restaurant_id);
 create index menu_items_restaurant_id_idx on public.menu_items(restaurant_id);
 create index menu_items_category_id_idx on public.menu_items(category_id);
 create index orders_restaurant_id_created_at_idx on public.orders(restaurant_id, created_at desc);
+create index if not exists roma_orders_created_at_idx on public.roma_orders(created_at desc);
+create index if not exists roma_pending_payments_invoice_id_idx on public.roma_pending_payments(invoice_id);
 
 alter table public.restaurants enable row level security;
 alter table public.menu_categories enable row level security;
 alter table public.menu_items enable row level security;
 alter table public.orders enable row level security;
+alter table public.roma_orders enable row level security;
+alter table public.roma_pending_payments enable row level security;
+alter table public.roma_item_overrides enable row level security;
+alter table public.roma_item_images enable row level security;
+alter table public.roma_deleted_items enable row level security;
 
 create policy "Owners can manage restaurants"
 on public.restaurants
@@ -137,6 +175,9 @@ create policy "Public can create orders"
 on public.orders
 for insert
 with check (true);
+
+-- Server-side Roma storage for Vercel production.
+-- Access these tables only with SUPABASE_SERVICE_ROLE_KEY from trusted server code.
 
 -- After creating an auth user in Supabase, replace the owner_id and run this seed.
 -- insert into public.restaurants (owner_id, name, slug, phone)
