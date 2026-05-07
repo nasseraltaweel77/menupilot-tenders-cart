@@ -112,11 +112,16 @@ export async function deleteCategory(formData: FormData) {
 
 export async function upsertItem(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    await saveLocalItem(formData);
+    const result = await saveLocalItem(formData);
     revalidatePath("/admin/items");
     revalidatePath("/menu");
     revalidatePath("/menu/demo");
-    return;
+    revalidatePath("/menu/roma");
+    redirect(
+      result.ok
+        ? `/admin/items?success=${encodeURIComponent(result.message)}`
+        : `/admin/items?error=${encodeURIComponent(result.message)}`,
+    );
   }
 
   const { supabase, restaurantId } = await currentRestaurantId();

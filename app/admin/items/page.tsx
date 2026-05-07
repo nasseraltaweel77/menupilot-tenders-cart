@@ -8,10 +8,16 @@ import { getMockItemsWithImages } from "@/lib/local-images";
 import { hasSupabaseEnv, mockCategories, mockRestaurant } from "@/lib/mock-data";
 import type { MenuCategory, MenuItem } from "@/types/database";
 
-export default async function ItemsPage() {
+export default async function ItemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string; error?: string }>;
+}) {
+  const { success, error } = await searchParams;
+
   if (!hasSupabaseEnv()) {
     const items = await getMockItemsWithImages();
-    return <ItemsView restaurant={mockRestaurant} categories={mockCategories} items={items} />;
+    return <ItemsView restaurant={mockRestaurant} categories={mockCategories} items={items} success={success} error={error} />;
   }
 
   const { supabase, user } = await requireUser();
@@ -28,6 +34,8 @@ export default async function ItemsPage() {
       restaurant={restaurant}
       categories={(categories || []) as MenuCategory[]}
       items={(items || []) as MenuItem[]}
+      success={success}
+      error={error}
     />
   );
 }
@@ -36,10 +44,14 @@ function ItemsView({
   restaurant,
   categories,
   items,
+  success,
+  error,
 }: {
   restaurant?: { slug: string };
   categories: MenuCategory[];
   items: MenuItem[];
+  success?: string;
+  error?: string;
 }) {
   return (
     <main className="min-h-screen bg-paper">
@@ -47,6 +59,16 @@ function ItemsView({
       <section className="mx-auto grid max-w-6xl gap-6 px-4 py-8 xl:grid-cols-[420px_1fr]">
         <div className="panel p-5">
           <h1 className="text-xl font-bold">Add menu item</h1>
+          {success ? (
+            <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+              {success}
+            </p>
+          ) : null}
+          {error ? (
+            <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">
+              {error}
+            </p>
+          ) : null}
           <ItemForm categories={categories} />
         </div>
         <div className="space-y-4">

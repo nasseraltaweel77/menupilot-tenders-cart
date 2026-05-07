@@ -12,55 +12,83 @@ const deletedItemsPath = path.join(dataDir, "deleted-items.json");
 
 type ImageMap = Record<string, string>;
 type ItemOverrides = Record<string, Partial<MenuItem>>;
+type SaveItemResult = {
+  ok: boolean;
+  action: "added" | "updated";
+  itemId?: string;
+  message: string;
+};
 
 export async function getMockItemsWithImages(): Promise<MenuItem[]> {
   if (isVercelRuntime()) {
     return getProductionMenuItems();
   }
 
-  const imageMap = await readImageMap();
-  const itemOverrides = await readItemOverrides();
-  const deletedItems = await readDeletedItems();
-  return mockItems
-    .filter((item) => !deletedItems.includes(item.id))
-    .map((item) => ({
-      ...item,
-      ...itemOverrides[item.id],
-      image_url: imageMap[item.id] || itemOverrides[item.id]?.image_url || item.image_url,
-    }));
+  return getDevelopmentItems();
 }
 
-export async function saveLocalItem(formData: FormData) {
-  const id = String(formData.get("id") || "");
-  if (!id) {
-    return;
+export async function saveLocalItem(formData: FormData): Promise<SaveItemResult> {
+  const submittedId = String(formData.get("id") || "").trim();
+  const isNewItem = !submittedId;
+  const nameEn = String(formData.get("name_en") || "").trim();
+  const nameAr = String(formData.get("name_ar") || "").trim();
+  const price = Number(formData.get("price") || 0);
+
+  if (!nameEn || !nameAr) {
+    return {
+      ok: false,
+      action: isNewItem ? "added" : "updated",
+      message: "English and Arabic names are required.",
+    };
   }
+
+  if (!Number.isFinite(price) || price < 0) {
+    return {
+      ok: false,
+      action: isNewItem ? "added" : "updated",
+      message: "Enter a valid price.",
+    };
+  }
+
+  const existingItems = isVercelRuntime() ? await getProductionMenuItems() : await getDevelopmentItems();
+  const id = submittedId || generateUniqueItemId(nameEn || nameAr, existingItems);
 
   const currentImageUrl = String(formData.get("current_image_url") || "").trim();
   const submittedImageUrl = String(formData.get("image_url") || "").trim();
   const imageUrl = submittedImageUrl || (currentImageUrl.startsWith("/uploads/") ? currentImageUrl : "");
+  const existingItem = existingItems.find((item) => item.id === id);
+  const now = new Date().toISOString();
 
-  const itemOverrides = await readItemOverrides();
-  itemOverrides[id] = {
-    ...itemOverrides[id],
+  const itemData: MenuItem = {
+    ...(existingItem || {
+      id,
+      restaurant_id: "roma-pastry",
+      created_at: now,
+    }),
     id,
     category_id: String(formData.get("category_id") || "") || null,
-    name_en: String(formData.get("name_en") || ""),
-    name_ar: String(formData.get("name_ar") || ""),
+    name_en: nameEn,
+    name_ar: nameAr,
     description_en: String(formData.get("description_en") || "") || null,
     description_ar: String(formData.get("description_ar") || "") || null,
-    price: Number(formData.get("price") || 0),
+    price,
     image_url: imageUrl || null,
     is_available: formData.get("is_available") === "on",
   };
 
   if (isVercelRuntime()) {
-    await saveProductionMenuItem(id, itemOverrides[id]);
-    return;
+    await saveProductionMenuItem(id, itemData);
+    return {
+      ok: true,
+      action: isNewItem ? "added" : "updated",
+      itemId: id,
+      message: isNewItem ? "Item added successfully" : "Item saved successfully",
+    };
   }
 
+  const itemOverrides = await readItemOverrides();
+  itemOverrides[id] = itemData;
   await fs.mkdir(dataDir, { recursive: true });
-
   await fs.writeFile(itemOverridesPath, JSON.stringify(itemOverrides, null, 2), "utf8");
 
   if (imageUrl) {
@@ -68,6 +96,13 @@ export async function saveLocalItem(formData: FormData) {
     imageMap[id] = imageUrl;
     await fs.writeFile(imageMapPath, JSON.stringify(imageMap, null, 2), "utf8");
   }
+
+  return {
+    ok: true,
+    action: isNewItem ? "added" : "updated",
+    itemId: id,
+    message: isNewItem ? "Item added successfully" : "Item saved successfully",
+  };
 }
 
 export async function saveLocalItemImage(itemId: string, file: File, fallbackUrl: string) {
@@ -166,6 +201,31 @@ async function readDeletedItems(): Promise<string[]> {
   }
 }
 
+async function getDevelopmentItems(): Promise<MenuItem[]> {
+  const imageMap = await readImageMap();
+  const itemOverrides = await readItemOverrides();
+  const deletedItems = await readDeletedItems();
+  const itemMap = new Map<string, MenuItem>();
+
+  for (const item of mockItems) {
+    if (!deletedItems.includes(item.id)) {
+      itemMap.set(item.id, {
+        ...item,
+        ...itemOverrides[item.id],
+        image_url: imageMap[item.id] || itemOverrides[item.id]?.image_url || item.image_url,
+      });
+    }
+  }
+
+  for (const [itemId, itemOverride] of Object.entries(itemOverrides)) {
+    if (!deletedItems.includes(itemId) && !itemMap.has(itemId) && itemOverride.id) {
+      itemMap.set(itemId, itemOverride as MenuItem);
+    }
+  }
+
+  return Array.from(itemMap.values());
+}
+
 async function readProductionImageMap(): Promise<ImageMap> {
   if (!hasProductionStorage()) return {};
   const supabase = getProductionStorageClient();
@@ -239,15 +299,16 @@ async function readBundledJson<T>(filePath: string, fallback: T): Promise<T> {
 async function saveProductionMenuItem(itemId: string, itemData: Partial<MenuItem>) {
   const items = await getProductionMenuItems();
   const existing = items.find((item) => item.id === itemId) || mockItems.find((item) => item.id === itemId);
-  if (!existing) return;
-
-  const updatedItem = { ...existing, ...itemData };
+  const updatedItem = { ...existing, ...itemData, id: itemId } as MenuItem;
+  const existingSortOrder = items.findIndex((item) => item.id === itemId);
+  const mockSortOrder = mockItems.findIndex((item) => item.id === itemId);
+  const sortOrder = mockSortOrder >= 0 ? mockSortOrder : existingSortOrder >= 0 ? existingSortOrder : items.length;
   const supabase = getProductionStorageClient();
   const { error } = await supabase.from("roma_menu_items").upsert({
     item_id: itemId,
     item_data: updatedItem,
     is_deleted: false,
-    sort_order: mockItems.findIndex((item) => item.id === itemId),
+    sort_order: sortOrder,
     updated_at: new Date().toISOString(),
   });
 
@@ -303,4 +364,31 @@ function getSafeExtension(filename: string, mimeType: string) {
   if (mimeType === "image/webp") return ".webp";
   if (mimeType === "image/gif") return ".gif";
   return ".jpg";
+}
+
+function generateUniqueItemId(name: string, existingItems: MenuItem[]) {
+  const baseSlug = slugify(name) || `item-${Date.now()}`;
+  const existingIds = new Set(existingItems.map((item) => item.id));
+  let candidate = baseSlug.startsWith("item-") ? baseSlug : `item-${baseSlug}`;
+  let counter = 2;
+
+  while (existingIds.has(candidate)) {
+    candidate = `${baseSlug}-${counter}`;
+    if (!candidate.startsWith("item-")) {
+      candidate = `item-${candidate}`;
+    }
+    counter += 1;
+  }
+
+  return candidate;
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\u0600-\u06ff]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
 }
