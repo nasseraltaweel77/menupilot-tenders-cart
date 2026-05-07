@@ -49,6 +49,17 @@ select {
   }
 }
 
+@keyframes toastUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
 @keyframes slideUpFade {
   from {
     opacity: 0;

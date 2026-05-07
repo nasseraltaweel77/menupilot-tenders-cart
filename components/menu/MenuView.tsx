@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { createOrder } from "@/app/admin/actions";
 import { dictionaries, formatMoney, type Locale } from "@/lib/i18n";
@@ -49,13 +49,16 @@ export function MenuView({
   const [locationStatus, setLocationStatus] = useState("");
   const [orderId, setOrderId] = useState("");
   const [showOrderToast, setShowOrderToast] = useState(false);
+  const [showCartToast, setShowCartToast] = useState(false);
   const [error, setError] = useState("");
   const [paymentError, setPaymentError] = useState("");
   const [paymentPending, setPaymentPending] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const cartToastTimer = useRef<number | null>(null);
   const t = dictionaries[locale];
   const dir = locale === "ar" ? "rtl" : "ltr";
   const total = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart]);
+  const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
   const locationSuccess = locationStatus === t.locationSuccess;
   const minDeliveryDate = new Date().toISOString().split("T")[0];
 
@@ -82,6 +85,11 @@ export function MenuView({
         quantity: 1,
       }];
     });
+    setShowCartToast(true);
+    if (cartToastTimer.current) {
+      window.clearTimeout(cartToastTimer.current);
+    }
+    cartToastTimer.current = window.setTimeout(() => setShowCartToast(false), 2600);
   }
 
   function removeItem(itemId: string) {
@@ -228,6 +236,12 @@ export function MenuView({
           {t.orderSaved}
         </div>
       ) : null}
+      {showCartToast ? (
+        <div className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 animate-[toastUp_0.32s_ease-out] rounded-2xl border border-[#d6ad60]/45 bg-[linear-gradient(135deg,#2a1511,#170a08_62%,#6f1d2b)] px-5 py-3 text-center text-sm font-black text-[#fff7e8] shadow-2xl shadow-black/45 ring-1 ring-[#f4d8a4]/10 sm:bottom-6" role="status" aria-live="polite">
+          <span className="mx-auto mb-2 block h-px max-w-24 bg-gradient-to-r from-transparent via-[#f4d8a4]/70 to-transparent" />
+          {t.itemAdded}
+        </div>
+      ) : null}
 
       <header className="border-b border-[#d6ad60]/20 bg-[#1a0d0a]/95 shadow-lg shadow-black/20 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-5">
@@ -308,7 +322,10 @@ export function MenuView({
           </div>
 
           <aside className="h-fit min-w-0 rounded-xl border border-[#d6ad60]/25 bg-[linear-gradient(180deg,#24120e,#170a08)] p-4 shadow-2xl shadow-black/30 sm:p-5 lg:sticky lg:top-5">
-            <h2 className="text-xl font-bold text-[#f4d8a4]">{t.cart}</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-bold text-[#f4d8a4]">{t.cart}</h2>
+              <span className="min-w-10 rounded-full border border-[#d6ad60]/30 bg-[#140b08] px-3 py-1 text-center text-xs font-black text-[#f4d8a4]">{cartCount}</span>
+            </div>
             <div className="mt-4 space-y-3">
               {cart.length ? cart.map((line) => (
                 <div key={line.item_id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-[#d6ad60]/10 bg-[#140b08] p-3 transition hover:bg-[#1c100c]">
