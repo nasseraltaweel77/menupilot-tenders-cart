@@ -8,6 +8,8 @@ import { getMockItemsWithImages } from "@/lib/local-images";
 import { hasSupabaseEnv, mockCategories, mockRestaurant } from "@/lib/mock-data";
 import type { MenuCategory, MenuItem } from "@/types/database";
 
+export const dynamic = "force-dynamic";
+
 export default async function ItemsPage({
   searchParams,
 }: {

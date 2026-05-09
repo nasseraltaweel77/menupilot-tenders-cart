@@ -6,6 +6,8 @@ import { getSavedOrders } from "@/lib/local-orders";
 import { activeRestaurantConfig, mockRestaurant } from "@/lib/mock-data";
 import type { Order, OrderLineItem } from "@/types/database";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const [orders, menuItems] = await Promise.all([
     getSavedOrders(),

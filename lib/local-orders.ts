@@ -58,10 +58,19 @@ async function readProductionOrders(): Promise<Order[]> {
     .order("created_at", { ascending: false });
 
   if (error) {
+    if (isMissingTableError(error.message)) {
+      return [];
+    }
+
     throw new Error(error.message);
   }
 
   return (data || []).map((row) => row.order_data as Order);
+}
+
+function isMissingTableError(message: string) {
+  const lowerMessage = message.toLowerCase();
+  return lowerMessage.includes("could not find the table") || lowerMessage.includes("does not exist");
 }
 
 async function saveProductionOrder(order: Order) {

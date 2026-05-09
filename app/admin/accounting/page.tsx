@@ -8,6 +8,8 @@ import type { Order, OrderLineItem } from "@/types/database";
 
 type BestSeller = OrderLineItem;
 
+export const dynamic = "force-dynamic";
+
 export default async function AccountingDashboardPage() {
   const orders = await getSavedOrders();
   const todayOrders = orders.filter((order) => isToday(order.created_at));

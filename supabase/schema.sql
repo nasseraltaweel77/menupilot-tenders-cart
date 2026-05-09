@@ -30,6 +30,10 @@ create table if not exists public.tenders_orders (
   created_at timestamptz not null default now()
 );
 
+alter table public.tenders_orders
+  add column if not exists order_data jsonb,
+  add column if not exists created_at timestamptz not null default now();
+
 create table if not exists public.tenders_pending_payments (
   id text primary key,
   invoice_id text unique,
@@ -37,6 +41,12 @@ create table if not exists public.tenders_pending_payments (
   payment_data jsonb not null,
   created_at timestamptz not null default now()
 );
+
+alter table public.tenders_pending_payments
+  add column if not exists invoice_id text,
+  add column if not exists status text not null default 'initiated',
+  add column if not exists payment_data jsonb,
+  add column if not exists created_at timestamptz not null default now();
 
 create table if not exists public.tenders_menu_items (
   item_id text primary key,
@@ -46,11 +56,21 @@ create table if not exists public.tenders_menu_items (
   updated_at timestamptz not null default now()
 );
 
+alter table public.tenders_menu_items
+  add column if not exists item_data jsonb,
+  add column if not exists is_deleted boolean not null default false,
+  add column if not exists sort_order int not null default 0,
+  add column if not exists updated_at timestamptz not null default now();
+
 create table if not exists public.tenders_item_overrides (
   item_id text primary key,
   item_data jsonb not null,
   updated_at timestamptz not null default now()
 );
+
+alter table public.tenders_item_overrides
+  add column if not exists item_data jsonb,
+  add column if not exists updated_at timestamptz not null default now();
 
 create table if not exists public.tenders_item_images (
   item_id text primary key,
@@ -58,10 +78,17 @@ create table if not exists public.tenders_item_images (
   updated_at timestamptz not null default now()
 );
 
+alter table public.tenders_item_images
+  add column if not exists image_url text,
+  add column if not exists updated_at timestamptz not null default now();
+
 create table if not exists public.tenders_deleted_items (
   item_id text primary key,
   deleted_at timestamptz not null default now()
 );
+
+alter table public.tenders_deleted_items
+  add column if not exists deleted_at timestamptz not null default now();
 
 create index if not exists tenders_orders_created_at_idx on public.tenders_orders(created_at desc);
 create index if not exists tenders_pending_payments_invoice_id_idx on public.tenders_pending_payments(invoice_id);

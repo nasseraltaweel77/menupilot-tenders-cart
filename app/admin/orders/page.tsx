@@ -9,6 +9,8 @@ import type { Order, OrderStatus } from "@/types/database";
 
 const statuses: OrderStatus[] = ["New", "Paid", "Preparing", "Ready", "Delivered", "Cancelled"];
 
+export const dynamic = "force-dynamic";
+
 export default async function OrdersPage() {
   if (!hasSupabaseEnv()) {
     const orders = await getSavedOrders();

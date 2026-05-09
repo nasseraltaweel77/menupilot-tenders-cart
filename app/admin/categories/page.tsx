@@ -5,6 +5,8 @@ import { requireUser } from "@/lib/auth";
 import { hasSupabaseEnv, mockCategories, mockRestaurant } from "@/lib/mock-data";
 import type { MenuCategory } from "@/types/database";
 
+export const dynamic = "force-dynamic";
+
 export default async function CategoriesPage() {
   if (!hasSupabaseEnv()) {
     return <CategoriesView restaurant={mockRestaurant} categories={mockCategories} />;
