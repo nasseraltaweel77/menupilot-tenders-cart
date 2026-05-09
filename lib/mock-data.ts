@@ -9,7 +9,7 @@ export const mockRestaurant = activeRestaurantConfig.restaurant;
 export const mockCategories = activeRestaurantConfig.categories;
 export const mockItems = activeRestaurantConfig.menuItems;
 
-export const romaMeta = {
+export const restaurantMeta = {
   city: activeRestaurantConfig.branding.city,
   instagram: activeRestaurantConfig.contact.socialLinks.instagram || "",
   tagline: activeRestaurantConfig.branding.tagline,

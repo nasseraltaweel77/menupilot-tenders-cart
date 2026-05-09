@@ -24,7 +24,7 @@ export default async function DashboardPage() {
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-[#d6ad60]">{brand.name} · {brand.city}</p>
-            <h1 className="text-3xl font-bold text-[#fff7e8]">لوحة تحكم روما باستري</h1>
+            <h1 className="text-3xl font-bold text-[#fff7e8]">Tenders Cart Dashboard</h1>
             <p className="mt-2 text-sm text-[#cdbd9f]">{brand.tagline}</p>
           </div>
           <Link className="rounded-lg bg-[#d6ad60] px-4 py-2 text-sm font-bold text-[#140b08]" href="/menu">
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
                   <Link key={order.id} href="/admin/orders" className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-[#2a1511]">
                     <div>
                       <p className="font-semibold">{order.customer_name}</p>
-                      <p className="text-sm text-[#cdbd9f]">{order.items.map((item) => item.name_ar).join("، ")}</p>
+                      <p className="text-sm text-[#cdbd9f]">{order.items.map((item) => item.name_ar).join(", ")}</p>
                       {extractLocationLink(order.notes) ? (
                         <p className="mt-1 text-xs text-[#d6ad60]">{extractLocationLink(order.notes)}</p>
                       ) : null}
@@ -105,9 +105,6 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 function DashboardEmptyState() {
   return (
     <div className="rounded-lg border border-dashed border-[#d6ad60]/25 bg-[#140b08]/60 px-4 py-6 text-center">
-      <p className="font-bold text-[#f4d8a4]">لا توجد طلبات بعد</p>
-      <p className="mt-2 text-sm text-[#cdbd9f]">ستظهر الطلبات هنا بعد وصول أول طلب.</p>
-      <div className="mx-auto my-4 h-px max-w-48 bg-gradient-to-r from-transparent via-[#d6ad60]/40 to-transparent" />
       <p className="font-bold text-[#f4d8a4]">No orders yet</p>
       <p className="mt-2 text-sm text-[#cdbd9f]">Orders will appear here after the first customer order.</p>
     </div>

@@ -1,7 +1,7 @@
-import { romaPastryConfig } from "@/config/restaurants/roma-pastry";
+import { tendersCartConfig } from "@/config/restaurants/tenders-cart";
 import type { RestaurantBrandConfig } from "@/config/restaurants/types";
 
-export const restaurants = [romaPastryConfig] as const satisfies readonly RestaurantBrandConfig[];
+export const restaurants = [tendersCartConfig] as const satisfies readonly RestaurantBrandConfig[];
 
 export const restaurantConfigs = Object.fromEntries(
   restaurants.flatMap((config) => [
@@ -11,7 +11,7 @@ export const restaurantConfigs = Object.fromEntries(
   ]),
 ) as Record<string, RestaurantBrandConfig>;
 
-export const defaultRestaurantConfig = romaPastryConfig;
+export const defaultRestaurantConfig = tendersCartConfig;
 
 export function getRestaurantConfig(slug?: string) {
   if (!slug) {

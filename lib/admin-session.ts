@@ -8,14 +8,14 @@ export const adminSessionCookie = "restaurant_admin_session";
 export function getAdminCredentials() {
   return {
     username: process.env.ADMIN_USERNAME || "admin",
-    password: process.env.ADMIN_PASSWORD || "roma123",
+    password: process.env.ADMIN_PASSWORD || "tenders123",
   };
 }
 
 export function getAccountantCredentials() {
   return {
     username: process.env.ACCOUNTANT_USERNAME || "accountant",
-    password: process.env.ACCOUNTANT_PASSWORD || "roma123",
+    password: process.env.ACCOUNTANT_PASSWORD || "tenders123",
   };
 }
 

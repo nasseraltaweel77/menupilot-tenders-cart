@@ -230,7 +230,7 @@ async function getDevelopmentItems(config: RestaurantBrandConfig): Promise<MenuI
 async function readProductionImageMap(): Promise<ImageMap> {
   if (!hasProductionStorage()) return {};
   const supabase = getProductionStorageClient();
-  const { data, error } = await supabase.from("roma_item_images").select("item_id,image_url");
+  const { data, error } = await supabase.from(`${activeRestaurantConfig.data.storagePrefix}_item_images`).select("item_id,image_url");
   if (error) throw new Error(error.message);
   return Object.fromEntries((data || []).map((row) => [row.item_id as string, row.image_url as string]));
 }
@@ -342,7 +342,7 @@ async function deleteProductionMenuItem(itemId: string) {
 async function readProductionItemOverrides(): Promise<ItemOverrides> {
   if (!hasProductionStorage()) return {};
   const supabase = getProductionStorageClient();
-  const { data, error } = await supabase.from("roma_item_overrides").select("item_id,item_data");
+  const { data, error } = await supabase.from(`${activeRestaurantConfig.data.storagePrefix}_item_overrides`).select("item_id,item_data");
   if (error) throw new Error(error.message);
   return Object.fromEntries((data || []).map((row) => [row.item_id as string, row.item_data as Partial<MenuItem>]));
 }
@@ -350,7 +350,7 @@ async function readProductionItemOverrides(): Promise<ItemOverrides> {
 async function readProductionDeletedItems(): Promise<string[]> {
   if (!hasProductionStorage()) return [];
   const supabase = getProductionStorageClient();
-  const { data, error } = await supabase.from("roma_deleted_items").select("item_id");
+  const { data, error } = await supabase.from(`${activeRestaurantConfig.data.storagePrefix}_deleted_items`).select("item_id");
   if (error) throw new Error(error.message);
   return (data || []).map((row) => row.item_id as string);
 }

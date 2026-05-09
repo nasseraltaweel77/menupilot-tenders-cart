@@ -1,47 +1,8 @@
--- MenuPilot / Roma Pastry production schema
+-- Tenders Cart production schema
 -- Run this whole file in the Supabase SQL Editor.
--- It is idempotent: safe to run again after future deployments.
+-- It is idempotent and safe to run again after future deployments.
 
 create extension if not exists "pgcrypto";
-
--- ---------------------------------------------------------------------------
--- Original MenuPilot MVP tables
--- Kept for compatibility with the first SaaS foundation.
--- The current Roma Pastry production flow uses the roma_* tables below.
--- ---------------------------------------------------------------------------
-
-create table if not exists public.restaurants (
-  id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
-  name text not null,
-  slug text not null unique,
-  phone text,
-  currency text not null default 'SAR',
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.menu_categories (
-  id uuid primary key default gen_random_uuid(),
-  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
-  name_en text not null,
-  name_ar text not null,
-  sort_order int not null default 0,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.menu_items (
-  id uuid primary key default gen_random_uuid(),
-  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
-  category_id uuid references public.menu_categories(id) on delete set null,
-  name_en text not null,
-  name_ar text not null,
-  description_en text,
-  description_ar text,
-  price numeric(10, 2) not null check (price >= 0),
-  image_url text,
-  is_available boolean not null default true,
-  created_at timestamptz not null default now()
-);
 
 do $$
 begin
@@ -54,8 +15,7 @@ do $$
 begin
   if exists (select 1 from pg_type where typname = 'order_status' and typnamespace = 'public'::regnamespace) then
     if not exists (
-      select 1
-      from pg_enum
+      select 1 from pg_enum
       where enumlabel = 'Paid'
       and enumtypid = 'public.order_status'::regtype
     ) then
@@ -64,35 +24,13 @@ begin
   end if;
 end $$;
 
-create table if not exists public.orders (
-  id uuid primary key default gen_random_uuid(),
-  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
-  customer_name text not null,
-  customer_phone text not null,
-  delivery_address text not null,
-  notes text,
-  status public.order_status not null default 'New',
-  total numeric(10, 2) not null check (total >= 0),
-  items jsonb not null default '[]'::jsonb,
-  created_at timestamptz not null default now()
-);
-
--- ---------------------------------------------------------------------------
--- Roma Pastry production tables
--- These are used by Vercel server code with SUPABASE_SERVICE_ROLE_KEY.
--- ---------------------------------------------------------------------------
-
-create table if not exists public.roma_orders (
+create table if not exists public.tenders_orders (
   id text primary key,
   order_data jsonb not null,
   created_at timestamptz not null default now()
 );
 
-alter table public.roma_orders
-  add column if not exists order_data jsonb,
-  add column if not exists created_at timestamptz default now();
-
-create table if not exists public.roma_pending_payments (
+create table if not exists public.tenders_pending_payments (
   id text primary key,
   invoice_id text unique,
   status text not null default 'initiated',
@@ -100,13 +38,7 @@ create table if not exists public.roma_pending_payments (
   created_at timestamptz not null default now()
 );
 
-alter table public.roma_pending_payments
-  add column if not exists invoice_id text,
-  add column if not exists status text not null default 'initiated',
-  add column if not exists payment_data jsonb,
-  add column if not exists created_at timestamptz default now();
-
-create table if not exists public.roma_menu_items (
+create table if not exists public.tenders_menu_items (
   item_id text primary key,
   item_data jsonb not null,
   is_deleted boolean not null default false,
@@ -114,362 +46,62 @@ create table if not exists public.roma_menu_items (
   updated_at timestamptz not null default now()
 );
 
-alter table public.roma_menu_items
-  add column if not exists item_data jsonb,
-  add column if not exists is_deleted boolean not null default false,
-  add column if not exists sort_order int not null default 0,
-  add column if not exists updated_at timestamptz not null default now();
-
--- Legacy Roma tables kept only so older deployed code does not crash.
--- Current code writes menu data to roma_menu_items.
-create table if not exists public.roma_item_overrides (
+create table if not exists public.tenders_item_overrides (
   item_id text primary key,
   item_data jsonb not null,
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.roma_item_images (
+create table if not exists public.tenders_item_images (
   item_id text primary key,
   image_url text not null,
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.roma_deleted_items (
+create table if not exists public.tenders_deleted_items (
   item_id text primary key,
   deleted_at timestamptz not null default now()
 );
 
--- Helpful indexes
-create index if not exists menu_categories_restaurant_id_idx on public.menu_categories(restaurant_id);
-create index if not exists menu_items_restaurant_id_idx on public.menu_items(restaurant_id);
-create index if not exists menu_items_category_id_idx on public.menu_items(category_id);
-create index if not exists orders_restaurant_id_created_at_idx on public.orders(restaurant_id, created_at desc);
-create index if not exists roma_orders_created_at_idx on public.roma_orders(created_at desc);
-create index if not exists roma_pending_payments_invoice_id_idx on public.roma_pending_payments(invoice_id);
-create index if not exists roma_pending_payments_status_idx on public.roma_pending_payments(status);
-create index if not exists roma_menu_items_sort_order_idx on public.roma_menu_items(sort_order);
-create index if not exists roma_menu_items_deleted_idx on public.roma_menu_items(is_deleted);
+create index if not exists tenders_orders_created_at_idx on public.tenders_orders(created_at desc);
+create index if not exists tenders_pending_payments_invoice_id_idx on public.tenders_pending_payments(invoice_id);
+create index if not exists tenders_pending_payments_status_idx on public.tenders_pending_payments(status);
+create index if not exists tenders_menu_items_sort_order_idx on public.tenders_menu_items(sort_order);
+create index if not exists tenders_menu_items_deleted_idx on public.tenders_menu_items(is_deleted);
 
--- RLS is enabled. The current Next.js server uses SUPABASE_SERVICE_ROLE_KEY,
--- which bypasses RLS. Do not expose the service role key in client code.
-alter table public.restaurants enable row level security;
-alter table public.menu_categories enable row level security;
-alter table public.menu_items enable row level security;
-alter table public.orders enable row level security;
-alter table public.roma_orders enable row level security;
-alter table public.roma_pending_payments enable row level security;
-alter table public.roma_menu_items enable row level security;
-alter table public.roma_item_overrides enable row level security;
-alter table public.roma_item_images enable row level security;
-alter table public.roma_deleted_items enable row level security;
+alter table public.tenders_orders enable row level security;
+alter table public.tenders_pending_payments enable row level security;
+alter table public.tenders_menu_items enable row level security;
+alter table public.tenders_item_overrides enable row level security;
+alter table public.tenders_item_images enable row level security;
+alter table public.tenders_deleted_items enable row level security;
 
--- Original SaaS policies
-drop policy if exists "Owners can manage restaurants" on public.restaurants;
-create policy "Owners can manage restaurants"
-on public.restaurants
-for all
-using (auth.uid() = owner_id)
-with check (auth.uid() = owner_id);
+-- Server routes use SUPABASE_SERVICE_ROLE_KEY, which bypasses RLS.
+-- Never expose the service role key in client-side code.
 
-drop policy if exists "Public can read restaurants" on public.restaurants;
-create policy "Public can read restaurants"
-on public.restaurants
-for select
-using (true);
-
-drop policy if exists "Owners can manage categories" on public.menu_categories;
-create policy "Owners can manage categories"
-on public.menu_categories
-for all
-using (
-  exists (
-    select 1 from public.restaurants
-    where restaurants.id = menu_categories.restaurant_id
-    and restaurants.owner_id = auth.uid()
-  )
-)
-with check (
-  exists (
-    select 1 from public.restaurants
-    where restaurants.id = menu_categories.restaurant_id
-    and restaurants.owner_id = auth.uid()
-  )
-);
-
-drop policy if exists "Public can read categories" on public.menu_categories;
-create policy "Public can read categories"
-on public.menu_categories
-for select
-using (true);
-
-drop policy if exists "Owners can manage items" on public.menu_items;
-create policy "Owners can manage items"
-on public.menu_items
-for all
-using (
-  exists (
-    select 1 from public.restaurants
-    where restaurants.id = menu_items.restaurant_id
-    and restaurants.owner_id = auth.uid()
-  )
-)
-with check (
-  exists (
-    select 1 from public.restaurants
-    where restaurants.id = menu_items.restaurant_id
-    and restaurants.owner_id = auth.uid()
-  )
-);
-
-drop policy if exists "Public can read available items" on public.menu_items;
-create policy "Public can read available items"
-on public.menu_items
-for select
-using (is_available = true);
-
-drop policy if exists "Owners can manage orders" on public.orders;
-create policy "Owners can manage orders"
-on public.orders
-for all
-using (
-  exists (
-    select 1 from public.restaurants
-    where restaurants.id = orders.restaurant_id
-    and restaurants.owner_id = auth.uid()
-  )
-)
-with check (
-  exists (
-    select 1 from public.restaurants
-    where restaurants.id = orders.restaurant_id
-    and restaurants.owner_id = auth.uid()
-  )
-);
-
-drop policy if exists "Public can create orders" on public.orders;
-create policy "Public can create orders"
-on public.orders
-for insert
-with check (true);
-
--- ---------------------------------------------------------------------------
--- Roma Pastry menu seed
--- Images are stored in Supabase as persistent item_data.image_url values.
--- Existing bundled /uploads images are used for items that already have assets.
--- Production uploads are saved back into this same JSON field.
--- ---------------------------------------------------------------------------
-
-insert into public.roma_menu_items (item_id, item_data, is_deleted, sort_order, updated_at)
+insert into public.tenders_menu_items (item_id, item_data, is_deleted, sort_order, updated_at)
 values
-(
-  'item-original',
-  '{
-    "id": "item-original",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-millefeuille",
-    "name_en": "Original Millefeuille Bites",
-    "name_ar": "ميلفيه بايتس أورجنال",
-    "description_en": "Crispy millefeuille layers filled with silky mousseline cream and finished with a refined French touch.",
-    "description_ar": "طبقات ميلفيه هشة محشية بكريمة الموسلين الكريمية بلمسة فرنسية فاخرة.",
-    "price": 175,
-    "image_url": "/uploads/item-original-1778111455841.jpeg",
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  1,
-  now()
-),
-(
-  'item-mix',
-  '{
-    "id": "item-mix",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-millefeuille",
-    "name_en": "Mixed Millefeuille Bites",
-    "name_ar": "ميلفيه بايتس مكس",
-    "description_en": "An elegant mixed box of Roma millefeuille bites with assorted refined fillings.",
-    "description_ar": "بوكس أنيق من ميلفيه روما بايتس بتشكيلة حشوات فاخرة ومتنوعة.",
-    "price": 185,
-    "image_url": null,
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  2,
-  now()
-),
-(
-  'item-savory',
-  '{
-    "id": "item-savory",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-millefeuille",
-    "name_en": "Savory Millefeuille Bites",
-    "name_ar": "ميلفيه بايتس مالح",
-    "description_en": "A premium assortment of savory millefeuille selections with rich gourmet fillings.",
-    "description_ar": "تشكيلة ميلفيه مالحة بحشوات فاخرة ومتنوعة مناسبة للتقديم والمناسبات.",
-    "price": 178,
-    "image_url": null,
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  3,
-  now()
-),
-(
-  'item-signature',
-  '{
-    "id": "item-signature",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-signature",
-    "name_en": "Roma Signature",
-    "name_ar": "روما سيجنتشر",
-    "description_en": "French layered cake with joconde sponge, coffee cream, and dark chocolate ganache.",
-    "description_ar": "كيك فرنسي بطبقات الجوكند وكريمة القهوة وجاناش الشوكولاتة الداكنة.",
-    "price": 180,
-    "image_url": "/uploads/item-signature-1778115230042.jpeg",
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  4,
-  now()
-),
-(
-  'item-madrid-classic',
-  '{
-    "id": "item-madrid-classic",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-cheesecakes",
-    "name_en": "Madrid Classic Cheesecake",
-    "name_ar": "تشيز كيك مدريد كلاسيك",
-    "description_en": "Rich and creamy cheesecake with a refined French touch and a smooth melt-in-your-mouth texture.",
-    "description_ar": "تشيز كيك كريمي غني بلمسة فرنسية كلاسيكية وقوام ناعم يذوب بالفم.",
-    "price": 200,
-    "image_url": "/uploads/item-madrid-classic-1778115397813.jpeg",
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  5,
-  now()
-),
-(
-  'item-madrid-mix',
-  '{
-    "id": "item-madrid-mix",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-cheesecakes",
-    "name_en": "Madrid Mixed Cheesecake",
-    "name_ar": "تشيز كيك مدريد مكس",
-    "description_en": "A mixed cheesecake selection made for sharing, gifting, and refined dessert tables.",
-    "description_ar": "تشكيلة تشيز كيك مدريد مكس للتقديم والمشاركة والهدايا الفاخرة.",
-    "price": 210,
-    "image_url": null,
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  6,
-  now()
-),
-(
-  'item-chocolate-madrid',
-  '{
-    "id": "item-chocolate-madrid",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-cheesecakes",
-    "name_en": "Chocolate Madrid Cheesecake",
-    "name_ar": "تشوكلت مدريد تشيز كيك",
-    "description_en": "Luxurious chocolate cheesecake with creamy layers and a deep balanced cocoa flavor.",
-    "description_ar": "تشيز كيك شوكولاتة فاخر بطبقات كريمية ونكهة كاكاو عميقة ومتوازنة.",
-    "price": 200,
-    "image_url": "/uploads/item-chocolate-madrid-1778115483830.jpeg",
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  7,
-  now()
-),
-(
-  'item-italian-french-box',
-  '{
-    "id": "item-italian-french-box",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-italian-french",
-    "name_en": "Italian & French Desserts Box",
-    "name_ar": "بوكس الحلويات الإيطالية والفرنسية",
-    "description_en": "A boutique dessert box inspired by Italian and French pastry classics.",
-    "description_ar": "بوكس حلويات فاخر مستوحى من كلاسيكيات الحلويات الإيطالية والفرنسية.",
-    "price": 220,
-    "image_url": null,
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  8,
-  now()
-),
-(
-  'item-eclair-platter',
-  '{
-    "id": "item-eclair-platter",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-platters",
-    "name_en": "Eclair Platter",
-    "name_ar": "إكلير بلاتر",
-    "description_en": "An elegant eclair platter with polished finishes and refined pastry cream.",
-    "description_ar": "بلاتر إكلير أنيق بتشطيبات فاخرة وكريمة باتسيير راقية.",
-    "price": 190,
-    "image_url": null,
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  9,
-  now()
-),
-(
-  'item-roma-show',
-  '{
-    "id": "item-roma-show",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-platters",
-    "name_en": "Roma Show",
-    "name_ar": "روما شو",
-    "description_en": "A statement Roma platter designed for celebrations, gatherings, and premium gifting.",
-    "description_ar": "بلاتر روما فاخر مصمم للاحتفالات والجمعات والهدايا الراقية.",
-    "price": 260,
-    "image_url": null,
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  10,
-  now()
-),
-(
-  'item-macaron',
-  '{
-    "id": "item-macaron",
-    "restaurant_id": "roma-pastry",
-    "category_id": "cat-macarons",
-    "name_en": "Macarons",
-    "name_ar": "ماكرون",
-    "description_en": "Delicate French macarons with refined textures and elegant flavors.",
-    "description_ar": "ماكرون فرنسي ناعم بقوام راق ونكهات أنيقة.",
-    "price": 150,
-    "image_url": null,
-    "is_available": true,
-    "created_at": "2026-05-07T00:00:00.000Z"
-  }'::jsonb,
-  false,
-  11,
-  now()
-)
+('item-sos-burger', '{"id":"item-sos-burger","restaurant_id":"tenders-cart","category_id":"cat-burgers","name_en":"SOS Burger","name_ar":"برجر SOS","description_en":"Crispy chicken, soft bun, pickles, and bold SOS sauce.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":25,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 1, now()),
+('item-original-burger', '{"id":"item-original-burger","restaurant_id":"tenders-cart","category_id":"cat-burgers","name_en":"Original Burger","name_ar":"برجر أوريجنال","description_en":"Golden chicken fillet with classic Tenders Cart flavor.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":25,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 2, now()),
+('item-tc-mango-sandwich', '{"id":"item-tc-mango-sandwich","restaurant_id":"tenders-cart","category_id":"cat-burgers","name_en":"TC Mango Sandwich","name_ar":"ساندويتش TC مانجو","description_en":"Crispy chicken with sweet-spicy mango sauce.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":28,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 3, now()),
+('item-sos-meal', '{"id":"item-sos-meal","restaurant_id":"tenders-cart","category_id":"cat-meals","name_en":"SOS Meal","name_ar":"وجبة SOS","description_en":"SOS burger served as a complete fast food meal.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":33,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 4, now()),
+('item-original-meal', '{"id":"item-original-meal","restaurant_id":"tenders-cart","category_id":"cat-meals","name_en":"Original Meal","name_ar":"وجبة أوريجنال","description_en":"Original burger meal with a crispy premium bite.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":32,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 5, now()),
+('item-tc-mango-meal', '{"id":"item-tc-mango-meal","restaurant_id":"tenders-cart","category_id":"cat-meals","name_en":"TC Mango Meal","name_ar":"وجبة TC مانجو","description_en":"Mango sandwich meal with a bright sweet-spicy finish.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":35,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 6, now()),
+('item-3pcs-tenders', '{"id":"item-3pcs-tenders","restaurant_id":"tenders-cart","category_id":"cat-tenders","name_en":"3 PCS Chicken Tenders","name_ar":"3 قطع تندرز دجاج","description_en":"Three juicy chicken tenders fried until crisp.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":29,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 7, now()),
+('item-5pcs-tenders', '{"id":"item-5pcs-tenders","restaurant_id":"tenders-cart","category_id":"cat-tenders","name_en":"5 PCS Chicken Tenders","name_ar":"5 قطع تندرز دجاج","description_en":"Five crispy tenders for bigger cravings.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":39,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 8, now()),
+('item-3pcs-tenders-meal', '{"id":"item-3pcs-tenders-meal","restaurant_id":"tenders-cart","category_id":"cat-tenders","name_en":"3 PCS Chicken Tenders Meal","name_ar":"وجبة 3 قطع تندرز","description_en":"Three-piece tenders meal with the full Tenders Cart experience.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":36,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 9, now()),
+('item-5pcs-tenders-meal', '{"id":"item-5pcs-tenders-meal","restaurant_id":"tenders-cart","category_id":"cat-tenders","name_en":"5 PCS Chicken Tenders Meal","name_ar":"وجبة 5 قطع تندرز","description_en":"Five-piece tenders meal made for serious crispy chicken fans.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":45,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 10, now()),
+('item-chicken-wrap', '{"id":"item-chicken-wrap","restaurant_id":"tenders-cart","category_id":"cat-burgers","name_en":"Chicken Wrap","name_ar":"راب دجاج","description_en":"A quick crispy chicken wrap with signature flavor.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":14,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 11, now()),
+('item-french-fries', '{"id":"item-french-fries","restaurant_id":"tenders-cart","category_id":"cat-sides","name_en":"French Fries","name_ar":"بطاطس مقلية","description_en":"Hot, golden, lightly salted fries.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":7,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 12, now()),
+('item-mozzarella-sticks', '{"id":"item-mozzarella-sticks","restaurant_id":"tenders-cart","category_id":"cat-sides","name_en":"Mozzarella Sticks","name_ar":"أصابع موزاريلا","description_en":"Crispy mozzarella sticks with a melty center.","description_ar":"اختيار كرسبي من تندرز كارت بنكهة جريئة وجودة فاخرة.","price":17,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 13, now()),
+('item-bbq', '{"id":"item-bbq","restaurant_id":"tenders-cart","category_id":"cat-sauces","name_en":"BBQ","name_ar":"باربكيو","description_en":"Smoky BBQ sauce.","description_ar":"صوص تندرز كارت بنكهة جريئة.","price":2,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 14, now()),
+('item-ranch', '{"id":"item-ranch","restaurant_id":"tenders-cart","category_id":"cat-sauces","name_en":"Ranch","name_ar":"رانش","description_en":"Creamy ranch sauce.","description_ar":"صوص تندرز كارت بنكهة جريئة.","price":2,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 15, now()),
+('item-mango', '{"id":"item-mango","restaurant_id":"tenders-cart","category_id":"cat-sauces","name_en":"Mango","name_ar":"مانجو","description_en":"Sweet and tangy mango sauce.","description_ar":"صوص تندرز كارت بنكهة جريئة.","price":3,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 16, now()),
+('item-honey-mustard', '{"id":"item-honey-mustard","restaurant_id":"tenders-cart","category_id":"cat-sauces","name_en":"Honey Mustard","name_ar":"هني مسترد","description_en":"Honey mustard sauce.","description_ar":"صوص تندرز كارت بنكهة جريئة.","price":2,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 17, now()),
+('item-mayo-sriracha', '{"id":"item-mayo-sriracha","restaurant_id":"tenders-cart","category_id":"cat-sauces","name_en":"Mayo Sriracha","name_ar":"مايو سريراتشا","description_en":"Creamy spicy mayo sriracha.","description_ar":"صوص تندرز كارت بنكهة جريئة.","price":2,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 18, now()),
+('item-garlic', '{"id":"item-garlic","restaurant_id":"tenders-cart","category_id":"cat-sauces","name_en":"Garlic","name_ar":"ثوم","description_en":"Rich garlic sauce.","description_ar":"صوص تندرز كارت بنكهة جريئة.","price":2,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 19, now()),
+('item-cheese', '{"id":"item-cheese","restaurant_id":"tenders-cart","category_id":"cat-sauces","name_en":"Cheese","name_ar":"جبن","description_en":"Warm cheese sauce.","description_ar":"صوص تندرز كارت بنكهة جريئة.","price":3,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 20, now()),
+('item-old-bay', '{"id":"item-old-bay","restaurant_id":"tenders-cart","category_id":"cat-sauces","name_en":"Old Bay","name_ar":"أولد باي","description_en":"Old Bay seasoned sauce.","description_ar":"صوص تندرز كارت بنكهة جريئة.","price":2,"image_url":null,"is_available":true,"created_at":"2026-05-09T00:00:00.000Z"}'::jsonb, false, 21, now())
 on conflict (item_id) do update
 set
   item_data = excluded.item_data,
@@ -477,6 +109,5 @@ set
   sort_order = excluded.sort_order,
   updated_at = now();
 
--- Optional quick checks after running this file:
--- select count(*) as roma_menu_item_count from public.roma_menu_items where is_deleted = false;
--- select item_id, item_data->>'name_ar' as name_ar, item_data->>'image_url' as image_url from public.roma_menu_items order by sort_order;
+-- Quick check:
+-- select count(*) as tenders_menu_item_count from public.tenders_menu_items where is_deleted = false;

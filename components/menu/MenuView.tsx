@@ -30,9 +30,9 @@ const initialCustomer: Customer = {
   notes: "",
 };
 
-const checkoutFieldClass = "field h-12 rounded-xl border-[#d6ad60]/35 bg-[#fffaf0] px-4 py-2 text-[16px] leading-6 text-[#1c100c] placeholder:text-stone-500 shadow-inner shadow-[#6f1d2b]/5 transition duration-200 ease-out focus:-translate-y-0.5 focus:border-[#d6ad60] focus:shadow-[0_0_0_4px_rgba(214,173,96,0.16)] focus:ring-0";
-const checkoutLabelClass = "mb-1.5 block text-sm font-bold text-[#f4d8a4]";
-const checkoutHelpClass = "mt-1.5 text-xs font-semibold text-[#cdbd9f]";
+const checkoutFieldClass = "field h-12 rounded-xl border-[#f25a1d]/30 bg-white px-4 py-2 text-[16px] font-semibold leading-6 text-[#351207] placeholder:text-stone-500 shadow-inner shadow-[#f25a1d]/5 transition duration-200 ease-out focus:-translate-y-0.5 focus:border-[#c92216] focus:shadow-[0_0_0_4px_rgba(242,90,29,0.16)] focus:ring-0";
+const checkoutLabelClass = "mb-1.5 block text-sm font-black text-[#c92216]";
+const checkoutHelpClass = "mt-1.5 text-xs font-bold text-[#8a3a18]";
 
 export function MenuView({
   restaurant,
@@ -61,7 +61,7 @@ export function MenuView({
   const cartToastTimer = useRef<number | null>(null);
   const t = dictionaries[locale];
   const brand = brandConfig.branding;
-  const social = brandConfig.contact.socialLinks;
+  const instagram = brandConfig.contact.socialLinks.instagram;
   const dir = locale === "ar" ? "rtl" : "ltr";
   const total = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
@@ -83,6 +83,7 @@ export function MenuView({
       if (existing) {
         return current.map((line) => line.item_id === item.id ? { ...line, quantity: line.quantity + 1 } : line);
       }
+
       return [...current, {
         item_id: item.id,
         name_en: item.name_en,
@@ -91,6 +92,7 @@ export function MenuView({
         quantity: 1,
       }];
     });
+
     setShowCartToast(true);
     if (cartToastTimer.current) {
       window.clearTimeout(cartToastTimer.current);
@@ -119,9 +121,7 @@ export function MenuView({
         updateCustomer("locationLink", `https://maps.google.com/?q=${latitude},${longitude}`);
         setLocationStatus(t.locationSuccess);
       },
-      () => {
-        setLocationStatus(t.locationDenied);
-      },
+      () => setLocationStatus(t.locationDenied),
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }
@@ -138,6 +138,11 @@ export function MenuView({
   function validateCheckout() {
     if (!cart.length) {
       setError(t.emptyCart);
+      return false;
+    }
+
+    if (!customer.name || !customer.phone || !customer.deliveryDate || !customer.deliveryTime || !customer.address) {
+      setError(locale === "ar" ? "يرجى إكمال بيانات الطلب." : "Please complete the checkout details.");
       return false;
     }
 
@@ -195,6 +200,7 @@ export function MenuView({
         window.open(url, "_blank", "noopener,noreferrer");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : locale === "ar" ? "تعذر حفظ الطلب." : "Unable to save order.");
+        return;
       }
     });
   }
@@ -232,45 +238,46 @@ export function MenuView({
       setPaymentPending(false);
     }
   }
-  
+
   const whatsappUrl = `https://wa.me/${restaurant.phone}`;
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#120806] text-[#fff7e8]" dir={dir} style={getBrandCssVars(brandConfig)}>
+    <main className="min-h-screen overflow-x-hidden bg-[#f7ead5] text-[#351207]" dir={dir} style={getBrandCssVars(brandConfig)}>
       {showOrderToast ? (
-        <div className="fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 animate-[toastIn_0.35s_ease-out] rounded-xl border border-[#d6ad60]/40 bg-[#21110d] px-5 py-3 text-center text-sm font-bold text-[#f4d8a4] shadow-2xl shadow-black/40">
+        <div className="fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 animate-[toastIn_0.35s_ease-out] rounded-xl border border-[#ffb000]/50 bg-[#c92216] px-5 py-3 text-center text-sm font-black text-white shadow-2xl shadow-[#c92216]/25">
           {t.orderSaved}
         </div>
       ) : null}
       {showCartToast ? (
-        <div className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 animate-[toastUp_0.32s_ease-out] rounded-2xl border border-[#d6ad60]/45 bg-[linear-gradient(135deg,#2a1511,#170a08_62%,#6f1d2b)] px-5 py-3 text-center text-sm font-black text-[#fff7e8] shadow-2xl shadow-black/45 ring-1 ring-[#f4d8a4]/10 sm:bottom-6" role="status" aria-live="polite">
-          <span className="mx-auto mb-2 block h-px max-w-24 bg-gradient-to-r from-transparent via-[#f4d8a4]/70 to-transparent" />
+        <div className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 animate-[toastUp_0.32s_ease-out] rounded-2xl border border-[#ffb000]/70 bg-[linear-gradient(135deg,#c92216,#f25a1d_62%,#ffb000)] px-5 py-3 text-center text-sm font-black text-white shadow-2xl shadow-[#c92216]/30 sm:bottom-6" role="status" aria-live="polite">
           {t.itemAdded}
         </div>
       ) : null}
 
-      <header className="border-b border-[#d6ad60]/20 bg-[#1a0d0a]/95 shadow-lg shadow-black/20 backdrop-blur">
+      <header className="border-b-4 border-[#c92216] bg-[#fff6e8]/95 shadow-lg shadow-[#c92216]/10 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-5">
-          <Link href="/" className="group min-w-0 cursor-pointer rounded-xl outline-none transition duration-300 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#d6ad60]/50">
-            <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-[#d6ad60] sm:tracking-[0.22em]">
-              {social.instagram ? `@${social.instagram} · ` : ""}{brand.city}
+          <Link href="/" className="group min-w-0 cursor-pointer rounded-xl outline-none transition duration-300 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#f25a1d]/50">
+            <p className="truncate text-xs font-black uppercase tracking-[0.18em] text-[#f25a1d] sm:tracking-[0.22em]">
+              {instagram ? `@${instagram} · ` : ""}{brand.city}
             </p>
-            <h1 className="mt-1 truncate font-serif text-2xl font-semibold tracking-[0.08em] text-[#fff7e8] drop-shadow-[0_0_14px_rgba(244,216,164,0.16)] transition group-hover:text-[#f4d8a4]">{restaurant.name}</h1>
+            <h1 className="mt-1 truncate text-3xl font-black uppercase tracking-[0.04em] text-[#c92216] transition group-hover:text-[#f25a1d]">
+              {restaurant.name}
+            </h1>
           </Link>
-          <button className="min-h-11 shrink-0 rounded-xl border border-[#d6ad60]/45 px-3 py-2 text-sm font-semibold text-[#f4d8a4] transition hover:bg-[#d6ad60]/10 active:scale-[0.98]" onClick={() => setLocale(locale === "en" ? "ar" : "en")}>
+          <button className="min-h-11 shrink-0 rounded-xl border-2 border-[#c92216] bg-white px-3 py-2 text-sm font-black text-[#c92216] transition hover:bg-[#ffb000]/20 active:scale-[0.98]" onClick={() => setLocale(locale === "en" ? "ar" : "en")}>
             {t.language}
           </button>
         </div>
       </header>
 
       <section className="mx-auto max-w-6xl px-3 py-4 sm:px-5 sm:py-6">
-        <div className="mb-5 animate-[slideUpFade_0.55s_ease-out] rounded-xl border border-[#d6ad60]/25 bg-[linear-gradient(135deg,rgba(42,21,17,0.98),rgba(26,13,10,0.96)_55%,rgba(111,29,43,0.35))] p-4 shadow-2xl shadow-black/25 sm:mb-6 sm:p-6">
-          <p className="text-sm font-semibold text-[#d6ad60]">{locale === "ar" ? brand.taglineAr : brand.tagline}</p>
-          <h2 className="mt-2 break-words font-serif text-4xl font-semibold tracking-[0.08em] text-[#fff7e8] drop-shadow-[0_0_18px_rgba(244,216,164,0.18)] sm:text-5xl">{brand.logoText}</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-[#e8d7bd]">
-            {locale === "ar"
-              ? "حلويات تُصنع بشغف… وتجربة تُقدَّم بذوق."
-              : "Crafted with passion. Served with elegance."}
+        <div className="mb-5 animate-[slideUpFade_0.55s_ease-out] rounded-2xl border-4 border-[#c92216] bg-[linear-gradient(135deg,#fff6e8,#f7ead5_55%,#ffd071)] p-4 shadow-2xl shadow-[#c92216]/15 sm:mb-6 sm:p-6">
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-[#f25a1d]">{locale === "ar" ? brand.taglineAr : brand.tagline}</p>
+          <h2 className="mt-2 break-words text-5xl font-black uppercase tracking-[0.03em] text-[#c92216] drop-shadow-[0_6px_0_rgba(255,176,0,0.35)] sm:text-6xl">
+            {brand.logoText}
+          </h2>
+          <p className="mt-4 max-w-2xl text-sm font-bold leading-7 text-[#6a2a13]">
+            {locale === "ar" ? brand.descriptionAr : brand.description}
           </p>
         </div>
 
@@ -281,43 +288,34 @@ export function MenuView({
               if (!categoryItems.length) return null;
               return (
                 <section key={category.id} className="min-w-0">
-                  <div className="mb-4 flex min-w-0 items-end justify-between gap-3 border-b border-[#d6ad60]/25 pb-3">
-                    <h2 className="min-w-0 break-words text-xl font-bold text-[#f4d8a4]">{label(category, "name")}</h2>
-                    <span className="h-px w-16 shrink-0 bg-gradient-to-r from-transparent via-[#d6ad60]/60 to-transparent" />
+                  <div className="mb-4 flex min-w-0 items-end justify-between gap-3 border-b-4 border-[#c92216]/25 pb-3">
+                    <h2 className="min-w-0 break-words text-2xl font-black uppercase text-[#c92216]">{label(category, "name")}</h2>
+                    <span className="h-1 w-16 shrink-0 rounded-full bg-gradient-to-r from-[#c92216] via-[#f25a1d] to-[#ffb000]" />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    {categoryItems.map((item, index) => (
-                      <article key={item.id} className="group min-w-0 animate-[slideUpFade_0.5s_ease-out] overflow-hidden rounded-xl border border-[#d6ad60]/20 bg-[linear-gradient(180deg,#24120e,#1a0d0a)] p-2 shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-1 hover:border-[#d6ad60]/55 hover:shadow-2xl hover:shadow-black/40 active:scale-[0.99]">
-                        {item.image_url ? (
-                          <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-[#140b08]">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={item.image_url}
-                              alt={label(item, "name")}
-                              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                              loading={index < 2 ? "eager" : "lazy"}
-                              decoding="async"
-                            />
-                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/12 via-transparent to-black/20 opacity-70" />
-                          </div>
-                        ) : (
-                          <div className="flex aspect-[4/3] items-center justify-center rounded-lg bg-[radial-gradient(circle_at_top,#6f1d2b,#2a1511_58%,#140b08)] transition duration-500 group-hover:brightness-110">
-                            <div className="rounded-full border border-[#d6ad60]/45 px-5 py-3 text-center transition duration-300 group-hover:border-[#f4d8a4]">
-                              <p className="text-xs uppercase tracking-[0.2em] text-[#d6ad60]">{brand.shortName}</p>
-                              <p className="text-sm font-bold text-[#fff7e8]">{restaurant.name}</p>
+                    {categoryItems.map((item) => (
+                      <article key={item.id} className="group min-w-0 animate-[slideUpFade_0.5s_ease-out] overflow-hidden rounded-2xl border-2 border-[#f25a1d]/30 bg-[#fffaf1] p-3 shadow-xl shadow-[#c92216]/10 transition duration-300 hover:-translate-y-1 hover:border-[#c92216] hover:shadow-2xl hover:shadow-[#c92216]/20 active:scale-[0.99]">
+                        <div className="flex aspect-[4/3] items-center justify-center rounded-xl bg-[radial-gradient(circle_at_top,#ffb000,#f25a1d_58%,#c92216)] transition duration-500 group-hover:brightness-110">
+                          {item.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.image_url} alt={label(item, "name")} className="h-full w-full rounded-xl object-cover transition duration-500 group-hover:scale-105" loading="lazy" decoding="async" />
+                          ) : (
+                            <div className="rounded-full border-4 border-white/70 bg-white/15 px-5 py-3 text-center text-white shadow-lg">
+                              <p className="text-xs font-black uppercase tracking-[0.2em]">{brand.shortName}</p>
+                              <p className="text-sm font-black uppercase">{restaurant.name}</p>
                             </div>
-                          </div>
-                        )}
-                        <div className="p-3.5">
+                          )}
+                        </div>
+                        <div className="p-2.5">
                           <div className="flex min-w-0 items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <h3 className="break-words font-bold leading-6 text-[#fff7e8]">{label(item, "name")}</h3>
-                              <p className="mt-1 break-words text-xs text-[#d6ad60]">{locale === "ar" ? brand.name : item.name_en}</p>
+                              <h3 className="break-words text-lg font-black leading-6 text-[#351207]">{label(item, "name")}</h3>
+                              <p className="mt-1 break-words text-xs font-black uppercase text-[#f25a1d]">{locale === "ar" ? brand.name : item.name_en}</p>
                             </div>
-                            <p className="shrink-0 text-sm font-bold text-[#f4d8a4]">{formatMoney(item.price, restaurant.currency, locale)}</p>
+                            <p className="shrink-0 rounded-full bg-[#ffb000] px-3 py-1 text-sm font-black text-[#351207]">{formatMoney(item.price, restaurant.currency, locale)}</p>
                           </div>
-                          <p className="mt-2 break-words text-xs font-semibold leading-5 text-[#b88b8f]">{label(item, "description")}</p>
-                          <button className="mt-4 min-h-11 w-full rounded-xl bg-gradient-to-r from-[#6f1d2b] to-[#8a2638] px-4 py-2 text-sm font-bold text-[#fff7e8] shadow-lg shadow-[#6f1d2b]/15 transition hover:shadow-[#6f1d2b]/35 active:scale-[0.98]" onClick={() => addItem(item)}>
+                          <p className="mt-2 break-words text-xs font-bold leading-5 text-[#8a3a18]">{label(item, "description")}</p>
+                          <button className="mt-4 min-h-11 w-full rounded-xl bg-gradient-to-r from-[#c92216] to-[#f25a1d] px-4 py-2 text-sm font-black uppercase text-white shadow-lg shadow-[#c92216]/20 transition hover:shadow-[#c92216]/35 active:scale-[0.98]" onClick={() => addItem(item)}>
                             {t.addToCart}
                           </button>
                         </div>
@@ -329,38 +327,38 @@ export function MenuView({
             })}
           </div>
 
-          <aside className="h-fit min-w-0 rounded-xl border border-[#d6ad60]/25 bg-[linear-gradient(180deg,#24120e,#170a08)] p-4 shadow-2xl shadow-black/30 sm:p-5 lg:sticky lg:top-5">
+          <aside className="h-fit min-w-0 rounded-2xl border-4 border-[#c92216] bg-[#fff6e8] p-4 shadow-2xl shadow-[#c92216]/15 sm:p-5 lg:sticky lg:top-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xl font-bold text-[#f4d8a4]">{t.cart}</h2>
-              <span className="min-w-10 rounded-full border border-[#d6ad60]/30 bg-[#140b08] px-3 py-1 text-center text-xs font-black text-[#f4d8a4]">{cartCount}</span>
+              <h2 className="text-2xl font-black uppercase text-[#c92216]">{t.cart}</h2>
+              <span className="min-w-10 rounded-full bg-[#ffb000] px-3 py-1 text-center text-xs font-black text-[#351207]">{cartCount}</span>
             </div>
             <div className="mt-4 space-y-3">
               {cart.length ? cart.map((line) => (
-                <div key={line.item_id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-[#d6ad60]/10 bg-[#140b08] p-3 transition hover:bg-[#1c100c]">
+                <div key={line.item_id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-[#f25a1d]/25 bg-white p-3 transition hover:bg-[#fffaf1]">
                   <div className="min-w-0">
-                    <p className="break-words font-semibold leading-6">{locale === "ar" ? line.name_ar : line.name_en}</p>
-                    <p className="text-sm text-[#cdbd9f]">{line.quantity} x {formatMoney(line.price, restaurant.currency, locale)}</p>
+                    <p className="break-words font-black leading-6 text-[#351207]">{locale === "ar" ? line.name_ar : line.name_en}</p>
+                    <p className="text-sm font-bold text-[#8a3a18]">{line.quantity} x {formatMoney(line.price, restaurant.currency, locale)}</p>
                   </div>
-                  <button className="min-h-10 rounded-lg border border-[#d6ad60]/30 px-3 py-1 text-sm font-semibold text-[#f4d8a4] transition hover:bg-[#d6ad60]/10 active:scale-[0.98]" onClick={() => removeItem(line.item_id)}>
+                  <button className="min-h-10 rounded-lg border-2 border-[#c92216] px-3 py-1 text-sm font-black text-[#c92216] transition hover:bg-[#ffb000]/25 active:scale-[0.98]" onClick={() => removeItem(line.item_id)}>
                     {t.remove}
                   </button>
                 </div>
               )) : (
-                <div className="rounded-xl border border-dashed border-[#d6ad60]/35 bg-[#140b08]/70 px-4 py-6 text-center shadow-inner shadow-black/20">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-[#d6ad60]/35 text-[#d6ad60]">R</div>
-                  <p className="font-bold text-[#f4d8a4]">{t.emptyCart}</p>
-                  <p className="mt-2 text-xs leading-5 text-[#cdbd9f]">{t.emptyCartHint}</p>
+                <div className="rounded-xl border-2 border-dashed border-[#f25a1d]/45 bg-white px-4 py-6 text-center shadow-inner shadow-[#f25a1d]/5">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#ffb000] text-sm font-black text-[#351207]">TC</div>
+                  <p className="font-black text-[#c92216]">{t.emptyCart}</p>
+                  <p className="mt-2 text-xs font-bold leading-5 text-[#8a3a18]">{t.emptyCartHint}</p>
                 </div>
               )}
             </div>
-            <div className="my-4 flex items-center justify-between gap-4 border-t border-[#d6ad60]/20 pt-4 font-bold text-[#f4d8a4]">
+            <div className="my-4 flex items-center justify-between gap-4 border-t-4 border-[#f25a1d]/20 pt-4 text-lg font-black text-[#c92216]">
               <span>{t.total}</span>
               <span className="shrink-0">{formatMoney(total, restaurant.currency, locale)}</span>
             </div>
 
-            {orderId ? <p className="mb-4 break-words rounded-xl bg-[#d6ad60]/15 px-3 py-2 text-sm font-semibold text-[#f4d8a4]">{t.orderSaved}: {orderId}</p> : null}
-            {error ? <p className="mb-4 break-words rounded-xl bg-[#6f1d2b]/40 px-3 py-2 text-sm font-semibold text-[#fff7e8]">{error}</p> : null}
-            {paymentError ? <p className="mb-4 break-words rounded-xl bg-[#6f1d2b]/40 px-3 py-2 text-sm font-semibold text-[#fff7e8]">{paymentError}</p> : null}
+            {orderId ? <p className="mb-4 break-words rounded-xl bg-[#ffb000]/30 px-3 py-2 text-sm font-black text-[#351207]">{t.orderSaved}: {orderId}</p> : null}
+            {error ? <p className="mb-4 break-words rounded-xl bg-[#c92216] px-3 py-2 text-sm font-black text-white">{error}</p> : null}
+            {paymentError ? <p className="mb-4 break-words rounded-xl bg-[#c92216] px-3 py-2 text-sm font-black text-white">{paymentError}</p> : null}
 
             <div className="space-y-3.5 sm:space-y-4">
               <input className={checkoutFieldClass} name="name" placeholder={t.name} value={customer.name} onChange={(event) => updateCustomer("name", event.target.value)} required />
@@ -368,69 +366,39 @@ export function MenuView({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="block">
                   <span className={checkoutLabelClass}>{t.deliveryDate}</span>
-                  <input
-                    className={checkoutFieldClass}
-                    type="date"
-                    name="deliveryDate"
-                    min={minDeliveryDate}
-                    value={customer.deliveryDate}
-                    onChange={(event) => updateCustomer("deliveryDate", event.target.value)}
-                    required
-                    dir="rtl"
-                    aria-label={t.deliveryDate}
-                  />
+                  <input className={checkoutFieldClass} type="date" name="deliveryDate" min={minDeliveryDate} value={customer.deliveryDate} onChange={(event) => updateCustomer("deliveryDate", event.target.value)} required dir="rtl" aria-label={t.deliveryDate} />
                   <span className={checkoutHelpClass}>{t.chooseDeliveryDate}</span>
                 </label>
                 <label className="block">
                   <span className={checkoutLabelClass}>{t.deliveryTime}</span>
-                  <input
-                    className={checkoutFieldClass}
-                    type="time"
-                    name="deliveryTime"
-                    value={customer.deliveryTime}
-                    onChange={(event) => updateCustomer("deliveryTime", event.target.value)}
-                    required
-                    dir="rtl"
-                    aria-label={t.deliveryTime}
-                  />
+                  <input className={checkoutFieldClass} type="time" name="deliveryTime" value={customer.deliveryTime} onChange={(event) => updateCustomer("deliveryTime", event.target.value)} required dir="rtl" aria-label={t.deliveryTime} />
                   <span className={checkoutHelpClass}>{t.chooseDeliveryTime}</span>
                 </label>
               </div>
               <textarea className={`${checkoutFieldClass} min-h-24`} name="address" placeholder={t.address} value={customer.address} onChange={(event) => updateCustomer("address", event.target.value)} required />
-              <button className="min-h-12 w-full rounded-xl border border-[#d6ad60]/45 bg-[#21110d]/60 px-4 py-3 text-sm font-bold text-[#f4d8a4] shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-[#d6ad60]/10 active:scale-[0.98]" type="button" onClick={useCurrentLocation}>
+              <button className="min-h-12 w-full rounded-xl border-2 border-[#c92216] bg-white px-4 py-3 text-sm font-black uppercase text-[#c92216] shadow-lg shadow-[#f25a1d]/10 transition hover:-translate-y-0.5 hover:bg-[#ffb000]/20 active:scale-[0.98]" type="button" onClick={useCurrentLocation}>
                 {t.locationButton}
               </button>
               {locationStatus ? (
-                <p className={`break-words rounded-xl px-3 py-2 text-sm font-semibold transition ${locationSuccess ? "animate-[pulse_0.9s_ease-out_1] bg-[#d6ad60]/15 text-[#f4d8a4] ring-1 ring-[#d6ad60]/30" : "text-[#f4d8a4]"}`}>
+                <p className={`break-words rounded-xl px-3 py-2 text-sm font-black transition ${locationSuccess ? "animate-[pulse_0.9s_ease-out_1] bg-[#ffb000]/30 text-[#351207] ring-1 ring-[#f25a1d]/30" : "text-[#c92216]"}`}>
                   {locationStatus}
                 </p>
               ) : null}
               <input className={checkoutFieldClass} name="locationLink" placeholder={t.locationField} value={customer.locationLink} readOnly aria-label={t.locationField} />
               <textarea className={`${checkoutFieldClass} min-h-24`} name="notes" placeholder={t.notes} value={customer.notes} onChange={(event) => updateCustomer("notes", event.target.value)} />
             </div>
-            <button
-              className="mt-4 flex min-h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#f4d8a4] via-[#d6ad60] to-[#8a2638] px-4 py-3 text-sm font-black text-[#140b08] shadow-xl shadow-[#d6ad60]/20 transition hover:-translate-y-0.5 hover:shadow-[#d6ad60]/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
-              type="button"
-              onClick={payNow}
-              disabled={!cart.length || paymentPending}
-            >
+            <button className="mt-4 flex min-h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#c92216] via-[#f25a1d] to-[#ffb000] px-4 py-3 text-sm font-black uppercase text-white shadow-xl shadow-[#f25a1d]/25 transition hover:-translate-y-0.5 hover:shadow-[#f25a1d]/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70" type="button" onClick={payNow} disabled={!cart.length || paymentPending}>
               {paymentPending ? t.paymentCreating : t.payNow}
             </button>
-            <p className="mt-2 text-center text-xs font-semibold text-[#cdbd9f]">{t.paymentMethods}</p>
-            <button className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl border border-[#d6ad60]/45 bg-[#21110d]/60 px-4 py-3 text-sm font-bold text-[#f4d8a4] shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-[#d6ad60]/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70" type="button" onClick={sendViaWhatsapp} disabled={!cart.length || isPending}>
+            <p className="mt-2 text-center text-xs font-bold text-[#8a3a18]">{t.paymentMethods}</p>
+            <button className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-[#c92216] bg-white px-4 py-3 text-sm font-black uppercase text-[#c92216] shadow-lg shadow-[#f25a1d]/10 transition hover:-translate-y-0.5 hover:bg-[#ffb000]/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70" type="button" onClick={sendViaWhatsapp} disabled={!cart.length || isPending}>
               {isPending ? t.savingOrder : t.sendWhatsapp}
             </button>
           </aside>
         </div>
       </section>
 
-      <a
-        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-[#d6ad60]/50 bg-[#21110d] text-sm font-black text-[#f4d8a4] shadow-2xl shadow-black/35 transition hover:-translate-y-1 hover:bg-[#2a1511] hover:shadow-[#d6ad60]/10 sm:left-6"
-        href={whatsappUrl}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="WhatsApp"
-      >
+      <a className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-[#25d366] text-sm font-black text-white shadow-2xl shadow-black/20 transition hover:-translate-y-1 sm:left-6" href={whatsappUrl} target="_blank" rel="noreferrer" aria-label="WhatsApp">
         WA
       </a>
     </main>

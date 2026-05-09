@@ -4,10 +4,10 @@
 
 :root {
   color-scheme: light;
-  --brand-primary: #d6ad60;
-  --brand-secondary: #6f1d2b;
-  --brand-accent: #f4d8a4;
-  --brand-background: #120806;
+  --brand-primary: #f25a1d;
+  --brand-secondary: #c92216;
+  --brand-accent: #ffb000;
+  --brand-background: #f7ead5;
 }
 
 * {
@@ -16,8 +16,8 @@
 
 body {
   margin: 0;
-  background: #fbfaf7;
-  color: #19201d;
+  background: #f7ead5;
+  color: #351207;
 }
 
 input,

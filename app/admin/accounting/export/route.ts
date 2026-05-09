@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSavedOrders } from "@/lib/local-orders";
+import { activeRestaurantConfig } from "@/lib/mock-data";
 import type { Order } from "@/types/database";
 
 type ExportRange = "all" | "today" | "month";
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
 
   return new NextResponse(csv, {
     headers: {
-      "Content-Disposition": `attachment; filename=\"roma-orders-${range}.csv\"`,
+      "Content-Disposition": `attachment; filename=\"${activeRestaurantConfig.data.storagePrefix}-orders-${range}.csv\"`,
       "Content-Type": "text/csv; charset=utf-8",
     },
   });

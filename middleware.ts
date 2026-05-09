@@ -44,11 +44,11 @@ async function getRoleFromRequest(request: NextRequest): Promise<AdminRole | nul
   const credentials: Record<AdminRole, { username: string; password: string }> = {
     admin: {
       username: process.env.ADMIN_USERNAME || "admin",
-      password: process.env.ADMIN_PASSWORD || "roma123",
+      password: process.env.ADMIN_PASSWORD || "tenders123",
     },
     accountant: {
       username: process.env.ACCOUNTANT_USERNAME || "accountant",
-      password: process.env.ACCOUNTANT_PASSWORD || "roma123",
+      password: process.env.ACCOUNTANT_PASSWORD || "tenders123",
     },
   };
 

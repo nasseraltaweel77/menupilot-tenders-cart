@@ -116,7 +116,7 @@ export async function upsertItem(formData: FormData) {
     revalidatePath("/admin/items");
     revalidatePath("/menu");
     revalidatePath("/menu/demo");
-    revalidatePath("/menu/roma");
+    revalidatePath("/menu/tenders-cart");
     redirect(
       result.ok
         ? `/admin/items?success=${encodeURIComponent(result.message)}`
@@ -167,6 +167,7 @@ export async function uploadItemImage(formData: FormData) {
     revalidatePath("/admin/items");
     revalidatePath("/menu");
     revalidatePath("/menu/demo");
+    revalidatePath("/menu/tenders-cart");
     return;
   }
 
@@ -179,6 +180,7 @@ export async function deleteItem(formData: FormData) {
     revalidatePath("/admin/items");
     revalidatePath("/menu");
     revalidatePath("/menu/demo");
+    revalidatePath("/menu/tenders-cart");
     return;
   }
 
