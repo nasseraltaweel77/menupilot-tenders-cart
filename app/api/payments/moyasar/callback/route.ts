@@ -10,11 +10,18 @@ type MoyasarCallback = {
 };
 
 export async function POST(request: Request) {
-  const body = await request.json() as MoyasarCallback;
+  try {
+    const body = await request.json() as MoyasarCallback;
 
-  if (body.id && body.status === "paid") {
-    await markMoyasarInvoicePaid(body.id, body.metadata?.payment_id);
+    if (body.id && body.status === "paid") {
+      await markMoyasarInvoicePaid(body.id, body.metadata?.payment_id);
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json({
+      ok: false,
+      error: error instanceof Error ? error.message : "Unable to process Moyasar callback.",
+    }, { status: 200 });
   }
-
-  return NextResponse.json({ ok: true });
 }

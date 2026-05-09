@@ -29,13 +29,13 @@ export async function POST(request: Request) {
     }
 
     const pendingPayment = await createPendingPayment({
-      restaurantId: input.restaurantId,
+      restaurantId: restaurantConfig.restaurant.id,
       customerName: input.customerName,
       customerPhone: input.customerPhone,
       deliveryAddress: input.deliveryAddress,
       notes: input.notes,
       total: input.total,
-      currency: input.currency || restaurantConfig.payments.currency,
+      currency: restaurantConfig.payments.currency || input.currency || restaurantConfig.restaurant.currency,
       items: input.items,
     });
 
@@ -52,7 +52,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: invoice.url, invoiceId: invoice.id });
   } catch (error) {
     return NextResponse.json({
-      error: error instanceof Error ? error.message : "Unable to create payment session.",
+      error: getFriendlyPaymentError(error),
     }, { status: 500 });
   }
+}
+
+function getFriendlyPaymentError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message.includes("MOYASAR_SECRET_KEY")) {
+    return "Payment is not configured correctly. Please add a valid Moyasar secret key.";
+  }
+
+  if (message.toLowerCase().includes("tenders_pending_payments") || message.toLowerCase().includes("could not find the table")) {
+    return "Payment storage is not ready. Please run the Tenders Cart Supabase schema.";
+  }
+
+  if (message.includes("Moyasar responded")) {
+    return message;
+  }
+
+  return message || "Unable to create payment session. Please try again or send the order through WhatsApp.";
 }

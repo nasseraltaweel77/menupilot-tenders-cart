@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { WhatsAppAutoRedirect } from "@/components/payment/WhatsAppAutoRedirect";
-import { finalizePendingPayment } from "@/lib/local-payments";
+import { finalizePendingPayment, type FinalizedPayment } from "@/lib/local-payments";
 import { activeRestaurantConfig } from "@/lib/mock-data";
+
+export const dynamic = "force-dynamic";
 
 export default async function ThankYouPage({
   searchParams,
@@ -9,7 +11,9 @@ export default async function ThankYouPage({
   searchParams: Promise<{ payment_id?: string }>;
 }) {
   const { payment_id: paymentId } = await searchParams;
-  const result = paymentId ? await finalizePendingPayment(paymentId) : { status: "failed" as const, orderId: "" };
+  const result: FinalizedPayment = paymentId
+    ? await finalizePendingPayment(paymentId)
+    : { status: "failed", orderId: "", whatsappUrl: "", whatsappMessage: "", error: "No payment id was provided." };
   const paid = result.status === "paid";
   const brand = activeRestaurantConfig.branding;
 
@@ -23,7 +27,7 @@ export default async function ThankYouPage({
         <p className="mt-3 text-sm leading-7 text-[#7a3c1e]">
           {paid
             ? "Your order has been saved as paid and will open in WhatsApp automatically."
-            : "Please return to the menu and try again, or send the order through WhatsApp."}
+            : result.error || "Please return to the menu and try again, or send the order through WhatsApp."}
         </p>
 
         <div className="mx-auto my-5 h-px max-w-48 bg-gradient-to-r from-transparent via-[#f25a1d]/45 to-transparent" />
@@ -34,7 +38,7 @@ export default async function ThankYouPage({
         <p className="mt-3 text-sm leading-7 text-[#7a3c1e]">
           {paid
             ? "Redirecting to WhatsApp in 2 seconds..."
-            : "Your payment could not be confirmed. No paid order was saved."}
+            : result.error || "Your payment could not be confirmed. No paid order was saved."}
         </p>
 
         {paid && result.whatsappUrl ? (

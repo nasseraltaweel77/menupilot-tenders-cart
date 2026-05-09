@@ -196,7 +196,7 @@ export function MenuView({
       try {
         if (!validateCheckout()) return;
         const id = await saveOrder();
-        const url = `https://wa.me/${restaurant.phone}?text=${encodeURIComponent(buildWhatsappMessage(id))}`;
+        const url = `https://wa.me/${brandConfig.contact.whatsappNumber}?text=${encodeURIComponent(buildWhatsappMessage(id))}`;
         window.open(url, "_blank", "noopener,noreferrer");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : locale === "ar" ? "تعذر حفظ الطلب." : "Unable to save order.");
@@ -239,7 +239,7 @@ export function MenuView({
     }
   }
 
-  const whatsappUrl = `https://wa.me/${restaurant.phone}`;
+  const whatsappUrl = `https://wa.me/${brandConfig.contact.whatsappNumber}`;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#f7ead5] text-[#351207]" dir={dir} style={getBrandCssVars(brandConfig)}>

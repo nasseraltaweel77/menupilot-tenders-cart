@@ -20,6 +20,7 @@ export type FinalizedPayment = {
   orderId: string;
   whatsappUrl: string;
   whatsappMessage: string;
+  error?: string;
 };
 
 export async function createPendingPayment(order: Omit<PendingPaymentOrder, "id">) {
@@ -58,25 +59,32 @@ export async function markMoyasarInvoicePaid(invoiceId: string, paymentId?: stri
 }
 
 export async function finalizePendingPayment(paymentId: string) {
-  const payment = await getPendingPayment(paymentId);
-  if (!payment?.invoiceId) {
-    return emptyFinalizedPayment("failed");
-  }
+  try {
+    const payment = await getPendingPayment(paymentId);
+    if (!payment?.invoiceId) {
+      return emptyFinalizedPayment("failed", "Payment details were not found. Please try again or send the order through WhatsApp.");
+    }
 
-  const invoice = await fetchMoyasarInvoice(payment.invoiceId, payment.order.restaurantId);
-  if (invoice?.status !== "paid") {
-    return emptyFinalizedPayment("failed");
-  }
+    const invoice = await fetchMoyasarInvoice(payment.invoiceId, payment.order.restaurantId);
+    if (invoice?.status !== "paid") {
+      return emptyFinalizedPayment("failed", "Payment is not marked as paid yet.");
+    }
 
-  const orderId = await markMoyasarInvoicePaid(payment.invoiceId, paymentId);
-  const whatsappMessage = buildPaidOrderWhatsappMessage(payment.order, orderId || "");
-  const restaurantConfig = getRestaurantConfigById(payment.order.restaurantId);
-  return {
-    status: "paid" as const,
-    orderId: orderId || "",
-    whatsappMessage,
-    whatsappUrl: `https://wa.me/${restaurantConfig.contact.whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`,
-  };
+    const orderId = await markMoyasarInvoicePaid(payment.invoiceId, paymentId);
+    const whatsappMessage = buildPaidOrderWhatsappMessage(payment.order, orderId || "");
+    const restaurantConfig = getRestaurantConfigById(payment.order.restaurantId);
+    return {
+      status: "paid" as const,
+      orderId: orderId || "",
+      whatsappMessage,
+      whatsappUrl: `https://wa.me/${restaurantConfig.contact.whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`,
+    };
+  } catch (error) {
+    return emptyFinalizedPayment(
+      "failed",
+      error instanceof Error ? error.message : "Unable to confirm the payment right now.",
+    );
+  }
 }
 
 async function savePendingPayment(payment: PendingPayment) {
@@ -122,6 +130,10 @@ async function saveProductionPendingPayment(payment: PendingPayment) {
     });
 
   if (error) {
+    if (isMissingStorageTable(error.message)) {
+      return null;
+    }
+
     throw new Error(error.message);
   }
 }
@@ -137,6 +149,10 @@ async function getProductionPendingPayment(paymentId: string): Promise<PendingPa
     .maybeSingle();
 
   if (error) {
+    if (isMissingStorageTable(error.message)) {
+      return null;
+    }
+
     throw new Error(error.message);
   }
 
@@ -160,12 +176,13 @@ async function getProductionPendingPaymentByInvoice(invoiceId: string): Promise<
   return data?.payment_data as PendingPayment || null;
 }
 
-function emptyFinalizedPayment(status: "failed"): FinalizedPayment {
+function emptyFinalizedPayment(status: "failed", error?: string): FinalizedPayment {
   return {
     status,
     orderId: "",
     whatsappMessage: "",
     whatsappUrl: "",
+    error,
   };
 }
 
@@ -187,6 +204,11 @@ function buildPaidOrderWhatsappMessage(order: PendingPaymentOrder, orderId: stri
     `Address: ${order.deliveryAddress || "-"}`,
     `Details: ${order.notes || "-"}`,
   ].join("\n");
+}
+
+function isMissingStorageTable(message: string) {
+  const lowerMessage = message.toLowerCase();
+  return lowerMessage.includes("could not find the table") || lowerMessage.includes("does not exist");
 }
 
 async function readLocalPendingPayments(): Promise<Record<string, PendingPayment>> {
