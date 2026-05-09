@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRestaurantConfigById } from "@/config/restaurants";
 import { createPendingPayment, attachInvoiceToPendingPayment } from "@/lib/local-payments";
-import { createMoyasarInvoice } from "@/lib/moyasar";
+import { createMoyasarInvoice, getMoyasarSecretKey } from "@/lib/moyasar";
 import type { OrderLineItem } from "@/types/database";
 
 type PaymentRequest = {
@@ -26,6 +26,11 @@ export async function POST(request: Request) {
     const restaurantConfig = getRestaurantConfigById(input.restaurantId);
     if (!restaurantConfig.payments.enabled) {
       return NextResponse.json({ error: "Payments are not enabled for this restaurant." }, { status: 400 });
+    }
+
+    const secretKey = getMoyasarSecretKey(restaurantConfig.payments.secretKeyEnv);
+    if (!secretKey || !secretKey.startsWith("sk_")) {
+      return NextResponse.json({ error: "Payment is not configured yet." }, { status: 500 });
     }
 
     const pendingPayment = await createPendingPayment({
@@ -61,7 +66,7 @@ function getFriendlyPaymentError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
 
   if (message.includes("MOYASAR_SECRET_KEY")) {
-    return "Payment is not configured correctly. Please add a valid Moyasar secret key.";
+    return "Payment is not configured yet.";
   }
 
   if (message.toLowerCase().includes("tenders_pending_payments") || message.toLowerCase().includes("could not find the table")) {

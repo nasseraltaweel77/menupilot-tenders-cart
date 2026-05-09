@@ -2,7 +2,6 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { createOrder } from "@/app/admin/actions";
 import type { RestaurantBrandConfig } from "@/config/restaurants/types";
 import { getBrandCssVars } from "@/lib/brand";
 import { dictionaries, formatMoney, type Locale } from "@/lib/i18n";
@@ -155,15 +154,26 @@ export function MenuView({
   }
 
   async function saveOrder() {
-    const id = await createOrder({
-      restaurantId: restaurant.id,
-      customerName: customer.name,
-      customerPhone: customer.phone,
-      deliveryAddress: customer.address,
-      notes: buildOrderNotes(),
-      total,
-      items: cart,
+    const response = await fetch("/api/orders/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        restaurantId: brandConfig.restaurant.id,
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        deliveryAddress: customer.address,
+        notes: buildOrderNotes(),
+        total,
+        items: cart,
+      }),
     });
+
+    const data = await response.json() as { id?: string; error?: string };
+    if (!response.ok || !data.id) {
+      throw new Error(data.error || "Unable to save order.");
+    }
+
+    const id = data.id;
     setOrderId(id);
     setShowOrderToast(true);
     window.setTimeout(() => setShowOrderToast(false), 3600);
@@ -193,15 +203,18 @@ export function MenuView({
   function sendViaWhatsapp() {
     setError("");
     startTransition(async () => {
+      if (!validateCheckout()) return;
+
+      let savedOrderId = "";
       try {
-        if (!validateCheckout()) return;
-        const id = await saveOrder();
-        const url = `https://wa.me/${brandConfig.contact.whatsappNumber}?text=${encodeURIComponent(buildWhatsappMessage(id))}`;
-        window.open(url, "_blank", "noopener,noreferrer");
+        savedOrderId = await saveOrder();
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : locale === "ar" ? "تعذر حفظ الطلب." : "Unable to save order.");
-        return;
+        setError(caught instanceof Error ? caught.message : locale === "ar" ? "تعذر حفظ الطلب، وسيتم فتح واتساب لإرسال الطلب." : "Unable to save order, but WhatsApp will still open.");
+      } finally {
+        const url = `https://wa.me/${brandConfig.contact.whatsappNumber}?text=${encodeURIComponent(buildWhatsappMessage(savedOrderId))}`;
+        window.open(url, "_blank", "noopener,noreferrer");
       }
+
     });
   }
 
@@ -216,7 +229,7 @@ export function MenuView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          restaurantId: restaurant.id,
+          restaurantId: brandConfig.restaurant.id,
           customerName: customer.name,
           customerPhone: customer.phone,
           deliveryAddress: customer.address,
