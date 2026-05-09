@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { getRestaurantConfigById } from "@/config/restaurants";
 import { fetchMoyasarInvoice, savePaidOrder, type PendingPaymentOrder } from "@/lib/moyasar";
 import { getProductionStorageClient, hasProductionStorage, isVercelRuntime } from "@/lib/production-storage";
 
@@ -62,18 +63,19 @@ export async function finalizePendingPayment(paymentId: string) {
     return emptyFinalizedPayment("failed");
   }
 
-  const invoice = await fetchMoyasarInvoice(payment.invoiceId);
+  const invoice = await fetchMoyasarInvoice(payment.invoiceId, payment.order.restaurantId);
   if (invoice?.status !== "paid") {
     return emptyFinalizedPayment("failed");
   }
 
   const orderId = await markMoyasarInvoicePaid(payment.invoiceId, paymentId);
   const whatsappMessage = buildPaidOrderWhatsappMessage(payment.order, orderId || "");
+  const restaurantConfig = getRestaurantConfigById(payment.order.restaurantId);
   return {
     status: "paid" as const,
     orderId: orderId || "",
     whatsappMessage,
-    whatsappUrl: `https://wa.me/966545199610?text=${encodeURIComponent(whatsappMessage)}`,
+    whatsappUrl: `https://wa.me/${restaurantConfig.contact.whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`,
   };
 }
 
@@ -107,9 +109,10 @@ async function getPendingPaymentByInvoice(invoiceId: string) {
 }
 
 async function saveProductionPendingPayment(payment: PendingPayment) {
+  const tableName = getRestaurantConfigById(payment.order.restaurantId).data.pendingPaymentsTable;
   const supabase = getProductionStorageClient();
   const { error } = await supabase
-    .from("roma_pending_payments")
+    .from(tableName)
     .upsert({
       id: payment.id,
       invoice_id: payment.invoiceId || null,
@@ -128,7 +131,7 @@ async function getProductionPendingPayment(paymentId: string): Promise<PendingPa
 
   const supabase = getProductionStorageClient();
   const { data, error } = await supabase
-    .from("roma_pending_payments")
+    .from(getRestaurantConfigById().data.pendingPaymentsTable)
     .select("payment_data")
     .eq("id", paymentId)
     .maybeSingle();
@@ -145,7 +148,7 @@ async function getProductionPendingPaymentByInvoice(invoiceId: string): Promise<
 
   const supabase = getProductionStorageClient();
   const { data, error } = await supabase
-    .from("roma_pending_payments")
+    .from(getRestaurantConfigById().data.pendingPaymentsTable)
     .select("payment_data")
     .eq("invoice_id", invoiceId)
     .maybeSingle();
@@ -167,8 +170,10 @@ function emptyFinalizedPayment(status: "failed"): FinalizedPayment {
 }
 
 function buildPaidOrderWhatsappMessage(order: PendingPaymentOrder, orderId: string) {
+  const restaurantConfig = getRestaurantConfigById(order.restaurantId);
+
   return [
-    "Roma Pastry Paid Order",
+    `${restaurantConfig.branding.name} Paid Order`,
     orderId ? `Order: ${orderId}` : "",
     "",
     "Products:",

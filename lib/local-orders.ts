@@ -1,5 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { getRestaurantConfigById } from "@/config/restaurants";
+import { activeRestaurantConfig } from "@/lib/mock-data";
 import { getProductionStorageClient, hasProductionStorage, isVercelRuntime } from "@/lib/production-storage";
 import type { Order, OrderLineItem, OrderStatus } from "@/types/database";
 
@@ -23,7 +25,7 @@ export async function saveLocalOrder(input: {
   id?: string;
 }) {
   const order: Order = {
-    id: input.id || `ROMA-${Date.now()}`,
+    id: input.id || `${getRestaurantConfigById(input.restaurantId).data.orderPrefix}-${Date.now()}`,
     restaurant_id: input.restaurantId,
     customer_name: input.customerName,
     customer_phone: input.customerPhone,
@@ -51,7 +53,7 @@ async function readProductionOrders(): Promise<Order[]> {
 
   const supabase = getProductionStorageClient();
   const { data, error } = await supabase
-    .from("roma_orders")
+    .from(activeRestaurantConfig.data.ordersTable)
     .select("order_data")
     .order("created_at", { ascending: false });
 
@@ -65,7 +67,7 @@ async function readProductionOrders(): Promise<Order[]> {
 async function saveProductionOrder(order: Order) {
   const supabase = getProductionStorageClient();
   const { error } = await supabase
-    .from("roma_orders")
+    .from(getRestaurantConfigById(order.restaurant_id).data.ordersTable)
     .upsert({
       id: order.id,
       order_data: order,

@@ -3,7 +3,7 @@ import { createHash } from "crypto";
 import { cookies } from "next/headers";
 import type { AdminRole } from "@/lib/admin-roles";
 
-export const adminSessionCookie = "roma_admin_session";
+export const adminSessionCookie = "restaurant_admin_session";
 
 export function getAdminCredentials() {
   return {
@@ -25,7 +25,7 @@ export function getCredentialsForRole(role: AdminRole) {
 
 export function createAdminSessionToken(username: string, password: string, role: AdminRole) {
   return createHash("sha256")
-    .update(`${username}:${password}:${role}:roma-admin-session`)
+    .update(`${username}:${password}:${role}:restaurant-admin-session`)
     .digest("hex");
 }
 

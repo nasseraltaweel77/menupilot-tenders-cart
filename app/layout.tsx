@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { activeRestaurantConfig } from "@/lib/mock-data";
 import "./globals.css";
 
+const brand = activeRestaurantConfig.branding;
+
 export const metadata: Metadata = {
-  title: "Roma Pastry",
-  description: "Luxury Italian and French pastries from Jeddah.",
+  title: brand.name,
+  description: brand.description,
 };
 
 export default function RootLayout({

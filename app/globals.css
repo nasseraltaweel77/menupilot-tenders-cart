@@ -4,6 +4,10 @@
 
 :root {
   color-scheme: light;
+  --brand-primary: #d6ad60;
+  --brand-secondary: #6f1d2b;
+  --brand-accent: #f4d8a4;
+  --brand-background: #120806;
 }
 
 * {

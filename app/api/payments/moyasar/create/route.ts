@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getRestaurantConfigById } from "@/config/restaurants";
 import { createPendingPayment, attachInvoiceToPendingPayment } from "@/lib/local-payments";
 import { createMoyasarInvoice } from "@/lib/moyasar";
 import type { OrderLineItem } from "@/types/database";
@@ -22,6 +23,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Cart is empty." }, { status: 400 });
     }
 
+    const restaurantConfig = getRestaurantConfigById(input.restaurantId);
+    if (!restaurantConfig.payments.enabled) {
+      return NextResponse.json({ error: "Payments are not enabled for this restaurant." }, { status: 400 });
+    }
+
     const pendingPayment = await createPendingPayment({
       restaurantId: input.restaurantId,
       customerName: input.customerName,
@@ -29,7 +35,7 @@ export async function POST(request: Request) {
       deliveryAddress: input.deliveryAddress,
       notes: input.notes,
       total: input.total,
-      currency: input.currency || "SAR",
+      currency: input.currency || restaurantConfig.payments.currency,
       items: input.items,
     });
 

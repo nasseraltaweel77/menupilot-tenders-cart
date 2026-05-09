@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { canAccessAdminRoute, defaultRouteForRole, type AdminRole } from "@/lib/admin-roles";
 
-const adminSessionCookie = "roma_admin_session";
+const adminSessionCookie = "restaurant_admin_session";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
 }
 
 async function createSessionToken(username: string, password: string, role: string) {
-  const data = new TextEncoder().encode(`${username}:${password}:${role}:roma-admin-session`);
+  const data = new TextEncoder().encode(`${username}:${password}:${role}:restaurant-admin-session`);
   const hash = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(hash))
     .map((byte) => byte.toString(16).padStart(2, "0"))

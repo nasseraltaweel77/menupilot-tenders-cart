@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { mockItems } from "@/lib/mock-data";
+import type { RestaurantBrandConfig } from "@/config/restaurants/types";
+import { activeRestaurantConfig } from "@/lib/mock-data";
 import { getProductionStorageClient, hasProductionStorage, isVercelRuntime } from "@/lib/production-storage";
 import type { MenuItem } from "@/types/database";
 
@@ -19,12 +20,12 @@ type SaveItemResult = {
   message: string;
 };
 
-export async function getMockItemsWithImages(): Promise<MenuItem[]> {
+export async function getMockItemsWithImages(config: RestaurantBrandConfig = activeRestaurantConfig): Promise<MenuItem[]> {
   if (isVercelRuntime()) {
-    return getProductionMenuItems();
+    return getProductionMenuItems(config);
   }
 
-  return getDevelopmentItems();
+  return getDevelopmentItems(config);
 }
 
 export async function saveLocalItem(formData: FormData): Promise<SaveItemResult> {
@@ -50,7 +51,7 @@ export async function saveLocalItem(formData: FormData): Promise<SaveItemResult>
     };
   }
 
-  const existingItems = isVercelRuntime() ? await getProductionMenuItems() : await getDevelopmentItems();
+  const existingItems = isVercelRuntime() ? await getProductionMenuItems(activeRestaurantConfig) : await getDevelopmentItems(activeRestaurantConfig);
   const id = submittedId || generateUniqueItemId(nameEn || nameAr, existingItems);
 
   const currentImageUrl = String(formData.get("current_image_url") || "").trim();
@@ -62,7 +63,7 @@ export async function saveLocalItem(formData: FormData): Promise<SaveItemResult>
   const itemData: MenuItem = {
     ...(existingItem || {
       id,
-      restaurant_id: "roma-pastry",
+      restaurant_id: activeRestaurantConfig.restaurant.id,
       created_at: now,
     }),
     id,
@@ -201,13 +202,13 @@ async function readDeletedItems(): Promise<string[]> {
   }
 }
 
-async function getDevelopmentItems(): Promise<MenuItem[]> {
+async function getDevelopmentItems(config: RestaurantBrandConfig): Promise<MenuItem[]> {
   const imageMap = await readImageMap();
   const itemOverrides = await readItemOverrides();
   const deletedItems = await readDeletedItems();
   const itemMap = new Map<string, MenuItem>();
 
-  for (const item of mockItems) {
+  for (const item of config.menuItems) {
     if (!deletedItems.includes(item.id)) {
       itemMap.set(item.id, {
         ...item,
@@ -234,24 +235,24 @@ async function readProductionImageMap(): Promise<ImageMap> {
   return Object.fromEntries((data || []).map((row) => [row.item_id as string, row.image_url as string]));
 }
 
-async function getProductionMenuItems(): Promise<MenuItem[]> {
+async function getProductionMenuItems(config: RestaurantBrandConfig): Promise<MenuItem[]> {
   if (!hasProductionStorage()) {
     throw new Error("Production menu storage is not configured. Add Supabase env vars and run schema.sql.");
   }
 
   const supabase = getProductionStorageClient();
   const { data, error } = await supabase
-    .from("roma_menu_items")
+    .from(config.data.menuItemsTable)
     .select("item_data,is_deleted,sort_order")
     .order("sort_order", { ascending: true });
 
   if (error) throw new Error(error.message);
 
   const rows = data || [];
-  const missingItems = mockItems.filter((item) => !rows.some((row) => (row.item_data as MenuItem).id === item.id));
+  const missingItems = config.menuItems.filter((item) => !rows.some((row) => (row.item_data as MenuItem).id === item.id));
   if (missingItems.length) {
-    await seedProductionMenuItems(missingItems);
-    return getProductionMenuItems();
+    await seedProductionMenuItems(missingItems, config);
+    return getProductionMenuItems(config);
   }
 
   return rows
@@ -259,15 +260,15 @@ async function getProductionMenuItems(): Promise<MenuItem[]> {
     .map((row) => row.item_data as MenuItem);
 }
 
-async function seedProductionMenuItems(itemsToSeed: MenuItem[]) {
+async function seedProductionMenuItems(itemsToSeed: MenuItem[], config: RestaurantBrandConfig) {
   const supabase = getProductionStorageClient();
   const seedItems = await getSeedMenuItems(itemsToSeed);
-  const { error } = await supabase.from("roma_menu_items").upsert(
+  const { error } = await supabase.from(config.data.menuItemsTable).upsert(
     seedItems.map((item) => ({
       item_id: item.id,
       item_data: item,
       is_deleted: false,
-      sort_order: mockItems.findIndex((mockItem) => mockItem.id === item.id),
+      sort_order: config.menuItems.findIndex((mockItem) => mockItem.id === item.id),
       updated_at: new Date().toISOString(),
     })),
   );
@@ -297,14 +298,14 @@ async function readBundledJson<T>(filePath: string, fallback: T): Promise<T> {
 }
 
 async function saveProductionMenuItem(itemId: string, itemData: Partial<MenuItem>) {
-  const items = await getProductionMenuItems();
-  const existing = items.find((item) => item.id === itemId) || mockItems.find((item) => item.id === itemId);
+  const items = await getProductionMenuItems(activeRestaurantConfig);
+  const existing = items.find((item) => item.id === itemId) || activeRestaurantConfig.menuItems.find((item) => item.id === itemId);
   const updatedItem = { ...existing, ...itemData, id: itemId } as MenuItem;
   const existingSortOrder = items.findIndex((item) => item.id === itemId);
-  const mockSortOrder = mockItems.findIndex((item) => item.id === itemId);
+  const mockSortOrder = activeRestaurantConfig.menuItems.findIndex((item) => item.id === itemId);
   const sortOrder = mockSortOrder >= 0 ? mockSortOrder : existingSortOrder >= 0 ? existingSortOrder : items.length;
   const supabase = getProductionStorageClient();
-  const { error } = await supabase.from("roma_menu_items").upsert({
+  const { error } = await supabase.from(activeRestaurantConfig.data.menuItemsTable).upsert({
     item_id: itemId,
     item_data: updatedItem,
     is_deleted: false,
@@ -316,22 +317,22 @@ async function saveProductionMenuItem(itemId: string, itemData: Partial<MenuItem
 }
 
 async function saveProductionMenuItemImage(itemId: string, imageUrl: string) {
-  const items = await getProductionMenuItems();
-  const existing = items.find((item) => item.id === itemId) || mockItems.find((item) => item.id === itemId);
+  const items = await getProductionMenuItems(activeRestaurantConfig);
+  const existing = items.find((item) => item.id === itemId) || activeRestaurantConfig.menuItems.find((item) => item.id === itemId);
   if (!existing) return;
 
   await saveProductionMenuItem(itemId, { ...existing, image_url: imageUrl });
 }
 
 async function deleteProductionMenuItem(itemId: string) {
-  const items = await getProductionMenuItems();
-  const existing = items.find((item) => item.id === itemId) || mockItems.find((item) => item.id === itemId);
+  const items = await getProductionMenuItems(activeRestaurantConfig);
+  const existing = items.find((item) => item.id === itemId) || activeRestaurantConfig.menuItems.find((item) => item.id === itemId);
   const supabase = getProductionStorageClient();
-  const { error } = await supabase.from("roma_menu_items").upsert({
+  const { error } = await supabase.from(activeRestaurantConfig.data.menuItemsTable).upsert({
     item_id: itemId,
     item_data: existing || { id: itemId },
     is_deleted: true,
-    sort_order: mockItems.findIndex((item) => item.id === itemId),
+    sort_order: activeRestaurantConfig.menuItems.findIndex((item) => item.id === itemId),
     updated_at: new Date().toISOString(),
   });
 

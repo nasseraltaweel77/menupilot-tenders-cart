@@ -1,8 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { MenuView } from "@/components/menu/MenuView";
+import { getRestaurantConfig } from "@/config/restaurants";
 import { getMockItemsWithImages } from "@/lib/local-images";
 import { createClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv, mockCategories, mockRestaurant } from "@/lib/mock-data";
+import { hasSupabaseEnv } from "@/lib/mock-data";
 import type { Locale } from "@/lib/i18n";
 
 export default async function PublicMenuPage({
@@ -19,18 +20,21 @@ export default async function PublicMenuPage({
     redirect(lang === "en" ? "/menu?lang=en" : "/menu");
   }
 
+  const restaurantConfig = getRestaurantConfig(slug);
+
   if (!hasSupabaseEnv()) {
-    if (slug !== mockRestaurant.slug) {
+    if (!restaurantConfig.aliases.includes(slug) && slug !== restaurantConfig.restaurant.slug && slug !== restaurantConfig.restaurant.id) {
       notFound();
     }
-    const items = await getMockItemsWithImages();
+    const items = await getMockItemsWithImages(restaurantConfig);
 
     return (
       <MenuView
-        restaurant={mockRestaurant}
-        categories={mockCategories}
+        restaurant={restaurantConfig.restaurant}
+        categories={restaurantConfig.categories}
         items={items}
         initialLocale={(lang === "en" ? "en" : "ar") as Locale}
+        brandConfig={restaurantConfig}
       />
     );
   }
@@ -57,6 +61,7 @@ export default async function PublicMenuPage({
       categories={categories || []}
       items={items || []}
       initialLocale={(lang === "en" ? "en" : "ar") as Locale}
+      brandConfig={restaurantConfig}
     />
   );
 }

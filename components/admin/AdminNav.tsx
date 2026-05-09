@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/app/admin/actions";
+import { activeRestaurantConfig } from "@/lib/mock-data";
 
 const links = [
   { href: "/admin/dashboard", label: "Dashboard" },
@@ -10,12 +11,14 @@ const links = [
 ];
 
 export function AdminNav({ restaurantSlug }: { restaurantSlug?: string }) {
+  const brand = activeRestaurantConfig.branding;
+
   return (
     <header className="border-b border-[#d6ad60]/20 bg-[#1c100c] text-[#fff7e8]">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Link href="/admin/dashboard" className="text-lg font-bold text-[#fff7e8]">
-            Roma Pastry
+            {brand.name}
           </Link>
           {restaurantSlug ? (
             <Link href="/menu" className="ml-3 text-sm font-semibold text-[#d6ad60]">

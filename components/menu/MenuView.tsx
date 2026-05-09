@@ -3,8 +3,10 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { createOrder } from "@/app/admin/actions";
+import type { RestaurantBrandConfig } from "@/config/restaurants/types";
+import { getBrandCssVars } from "@/lib/brand";
 import { dictionaries, formatMoney, type Locale } from "@/lib/i18n";
-import { romaMeta } from "@/lib/mock-data";
+import { activeRestaurantConfig } from "@/lib/mock-data";
 import type { MenuCategory, MenuItem, OrderLineItem, Restaurant } from "@/types/database";
 
 type CartLine = OrderLineItem;
@@ -37,11 +39,13 @@ export function MenuView({
   categories,
   items,
   initialLocale,
+  brandConfig = activeRestaurantConfig,
 }: {
   restaurant: Restaurant;
   categories: MenuCategory[];
   items: MenuItem[];
   initialLocale: Locale;
+  brandConfig?: RestaurantBrandConfig;
 }) {
   const [locale, setLocale] = useState<Locale>(initialLocale);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -56,6 +60,8 @@ export function MenuView({
   const [isPending, startTransition] = useTransition();
   const cartToastTimer = useRef<number | null>(null);
   const t = dictionaries[locale];
+  const brand = brandConfig.branding;
+  const social = brandConfig.contact.socialLinks;
   const dir = locale === "ar" ? "rtl" : "ltr";
   const total = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
@@ -161,7 +167,7 @@ export function MenuView({
 
   function buildWhatsappMessage(savedOrderId?: string) {
     return [
-      "Roma Pastry Order",
+      `${brand.name} Order`,
       savedOrderId ? `Order: ${savedOrderId}` : "",
       "",
       "Products:",
@@ -230,7 +236,7 @@ export function MenuView({
   const whatsappUrl = `https://wa.me/${restaurant.phone}`;
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#120806] text-[#fff7e8]" dir={dir}>
+    <main className="min-h-screen overflow-x-hidden bg-[#120806] text-[#fff7e8]" dir={dir} style={getBrandCssVars(brandConfig)}>
       {showOrderToast ? (
         <div className="fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 animate-[toastIn_0.35s_ease-out] rounded-xl border border-[#d6ad60]/40 bg-[#21110d] px-5 py-3 text-center text-sm font-bold text-[#f4d8a4] shadow-2xl shadow-black/40">
           {t.orderSaved}
@@ -246,7 +252,9 @@ export function MenuView({
       <header className="border-b border-[#d6ad60]/20 bg-[#1a0d0a]/95 shadow-lg shadow-black/20 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-5">
           <Link href="/" className="group min-w-0 cursor-pointer rounded-xl outline-none transition duration-300 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#d6ad60]/50">
-            <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-[#d6ad60] sm:tracking-[0.22em]">@{romaMeta.instagram} · {t.city}</p>
+            <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-[#d6ad60] sm:tracking-[0.22em]">
+              {social.instagram ? `@${social.instagram} · ` : ""}{brand.city}
+            </p>
             <h1 className="mt-1 truncate font-serif text-2xl font-semibold tracking-[0.08em] text-[#fff7e8] drop-shadow-[0_0_14px_rgba(244,216,164,0.16)] transition group-hover:text-[#f4d8a4]">{restaurant.name}</h1>
           </Link>
           <button className="min-h-11 shrink-0 rounded-xl border border-[#d6ad60]/45 px-3 py-2 text-sm font-semibold text-[#f4d8a4] transition hover:bg-[#d6ad60]/10 active:scale-[0.98]" onClick={() => setLocale(locale === "en" ? "ar" : "en")}>
@@ -257,8 +265,8 @@ export function MenuView({
 
       <section className="mx-auto max-w-6xl px-3 py-4 sm:px-5 sm:py-6">
         <div className="mb-5 animate-[slideUpFade_0.55s_ease-out] rounded-xl border border-[#d6ad60]/25 bg-[linear-gradient(135deg,rgba(42,21,17,0.98),rgba(26,13,10,0.96)_55%,rgba(111,29,43,0.35))] p-4 shadow-2xl shadow-black/25 sm:mb-6 sm:p-6">
-          <p className="text-sm font-semibold text-[#d6ad60]">{locale === "ar" ? romaMeta.taglineAr : romaMeta.tagline}</p>
-          <h2 className="mt-2 break-words font-serif text-4xl font-semibold tracking-[0.08em] text-[#fff7e8] drop-shadow-[0_0_18px_rgba(244,216,164,0.18)] sm:text-5xl">Roma Pastry</h2>
+          <p className="text-sm font-semibold text-[#d6ad60]">{locale === "ar" ? brand.taglineAr : brand.tagline}</p>
+          <h2 className="mt-2 break-words font-serif text-4xl font-semibold tracking-[0.08em] text-[#fff7e8] drop-shadow-[0_0_18px_rgba(244,216,164,0.18)] sm:text-5xl">{brand.logoText}</h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-[#e8d7bd]">
             {locale === "ar"
               ? "حلويات تُصنع بشغف… وتجربة تُقدَّم بذوق."
@@ -295,8 +303,8 @@ export function MenuView({
                         ) : (
                           <div className="flex aspect-[4/3] items-center justify-center rounded-lg bg-[radial-gradient(circle_at_top,#6f1d2b,#2a1511_58%,#140b08)] transition duration-500 group-hover:brightness-110">
                             <div className="rounded-full border border-[#d6ad60]/45 px-5 py-3 text-center transition duration-300 group-hover:border-[#f4d8a4]">
-                              <p className="text-xs uppercase tracking-[0.2em] text-[#d6ad60]">Roma</p>
-                              <p className="text-sm font-bold text-[#fff7e8]">Pastry</p>
+                              <p className="text-xs uppercase tracking-[0.2em] text-[#d6ad60]">{brand.shortName}</p>
+                              <p className="text-sm font-bold text-[#fff7e8]">{restaurant.name}</p>
                             </div>
                           </div>
                         )}
@@ -304,7 +312,7 @@ export function MenuView({
                           <div className="flex min-w-0 items-start justify-between gap-3">
                             <div className="min-w-0">
                               <h3 className="break-words font-bold leading-6 text-[#fff7e8]">{label(item, "name")}</h3>
-                              <p className="mt-1 break-words text-xs text-[#d6ad60]">{locale === "ar" ? t.productAccent : item.name_en}</p>
+                              <p className="mt-1 break-words text-xs text-[#d6ad60]">{locale === "ar" ? brand.name : item.name_en}</p>
                             </div>
                             <p className="shrink-0 text-sm font-bold text-[#f4d8a4]">{formatMoney(item.price, restaurant.currency, locale)}</p>
                           </div>

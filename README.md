@@ -1,31 +1,60 @@
-# MenuPilot - Roma Pastry
+# MenuPilot
 
-MenuPilot is configured here as a mock/local Roma Pastry ordering MVP for localhost and deployment demos.
+MenuPilot is a reusable restaurant ordering platform template. Roma Pastry is the first default restaurant configuration and remains fully working as the current live brand.
 
-This version does not require Supabase. It uses local mock data, local JSON overrides, and local uploaded images.
+The app supports a public menu, cart, checkout, WhatsApp orders, Moyasar payments, admin dashboard, accountant dashboard, Supabase-backed production storage, and local development fallbacks.
 
-## Brand
+## Restaurant Config
 
-- Brand: Roma Pastry
-- City: Jeddah
-- Instagram: `romapastry.sa`
-- WhatsApp: `0545199610`
-- WhatsApp order link number: `966545199610`
-- Tagline: Follow the sweetest road to Rome
-- Currency: SAR
+Restaurant branding and defaults live in:
+
+```text
+config/restaurants/
+```
+
+Roma Pastry is configured in:
+
+```text
+config/restaurants/roma-pastry.ts
+```
+
+The restaurant registry and switcher helpers live in:
+
+```text
+config/restaurants/index.ts
+```
+
+Each restaurant config controls:
+
+- name and slug
+- aliases and future custom domains
+- logo text or logo URL
+- colors
+- city, tagline, and description
+- WhatsApp number
+- social links
+- Moyasar environment variable names
+- Supabase table names
+- order prefix
+- categories
+- menu items
+
+To clone a new restaurant, copy `config/restaurants/roma-pastry.ts`, rename it, edit the fields, then register it in `config/restaurants/index.ts`.
 
 ## Stack
 
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- Local mock data
+- Supabase production storage
+- Local mock/data fallback
 - Local image uploads saved under `public/uploads`
 
 ## Main Routes
 
 - Home: `http://localhost:3000`
-- Public menu: `http://localhost:3000/menu/demo`
+- Public menu: `http://localhost:3000/menu`
+- Restaurant menu by slug: `http://localhost:3000/menu/roma`
 - Admin login: `http://localhost:3000/admin/login`
 - Admin dashboard: `http://localhost:3000/admin/dashboard`
 - Admin items: `http://localhost:3000/admin/items`
@@ -105,7 +134,7 @@ Do not omit:
 
 ## Deployment Notes
 
-This mock/local version is suitable for local demos and simple deployments where bundled mock data is enough.
+Vercel production uses Supabase/Moyasar environment variables. Local development can still use mock data and local uploads.
 
 ### Vercel
 
@@ -117,7 +146,7 @@ Recommended Vercel settings:
 - Install Command: `npm install`
 - Build Command: `npm run build`
 - Output Directory: leave blank
-- Environment variables: none required for the mock Roma Pastry version
+- Environment variables: add the Supabase, admin, accountant, and Moyasar keys used by your active restaurant config
 
 Deploy steps:
 

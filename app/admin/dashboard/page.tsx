@@ -3,7 +3,7 @@ import { AdminNav } from "@/components/admin/AdminNav";
 import { formatMoney } from "@/lib/i18n";
 import { getMockItemsWithImages } from "@/lib/local-images";
 import { getSavedOrders } from "@/lib/local-orders";
-import { mockRestaurant, romaMeta } from "@/lib/mock-data";
+import { activeRestaurantConfig, mockRestaurant } from "@/lib/mock-data";
 import type { Order, OrderLineItem } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -15,6 +15,7 @@ export default async function DashboardPage() {
   const revenue = todayOrders.reduce((sum, order) => sum + order.total, 0);
   const pendingOrders = todayOrders.filter((order) => ["New", "Preparing"].includes(order.status)).length;
   const bestSellers = getBestSellers(orders);
+  const brand = activeRestaurantConfig.branding;
 
   return (
     <main className="min-h-screen bg-[#140b08] text-[#fff7e8]">
@@ -22,9 +23,9 @@ export default async function DashboardPage() {
       <section className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-[#d6ad60]">Roma Pastry · {romaMeta.city}</p>
+            <p className="text-sm font-semibold text-[#d6ad60]">{brand.name} · {brand.city}</p>
             <h1 className="text-3xl font-bold text-[#fff7e8]">لوحة تحكم روما باستري</h1>
-            <p className="mt-2 text-sm text-[#cdbd9f]">{romaMeta.tagline}</p>
+            <p className="mt-2 text-sm text-[#cdbd9f]">{brand.tagline}</p>
           </div>
           <Link className="rounded-lg bg-[#d6ad60] px-4 py-2 text-sm font-bold text-[#140b08]" href="/menu">
             Open public menu

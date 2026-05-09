@@ -1,4 +1,5 @@
 import { saveLocalOrder } from "@/lib/local-orders";
+import { getRestaurantConfigById } from "@/config/restaurants";
 import type { OrderLineItem } from "@/types/database";
 
 const moyasarApiBase = "https://api.moyasar.com/v1";
@@ -24,14 +25,14 @@ export type MoyasarInvoice = {
   metadata?: Record<string, string>;
 };
 
-export function getMoyasarSecretKey() {
-  return process.env.MOYASAR_SECRET_KEY || "";
+export function getMoyasarSecretKey(secretKeyEnv = "MOYASAR_SECRET_KEY") {
+  return process.env[secretKeyEnv] || "";
 }
 
-function getValidatedMoyasarSecretKey() {
-  const secretKey = getMoyasarSecretKey();
+function getValidatedMoyasarSecretKey(secretKeyEnv = "MOYASAR_SECRET_KEY") {
+  const secretKey = getMoyasarSecretKey(secretKeyEnv);
   if (!secretKey) {
-    throw new Error("MOYASAR_SECRET_KEY is missing in environment variables.");
+    throw new Error(`${secretKeyEnv} is missing in environment variables.`);
   }
 
   if (!secretKey.startsWith("sk_")) {
@@ -45,7 +46,8 @@ export async function createMoyasarInvoice(input: {
   order: PendingPaymentOrder;
   origin: string;
 }) {
-  const secretKey = getValidatedMoyasarSecretKey();
+  const restaurantConfig = getRestaurantConfigById(input.order.restaurantId);
+  const secretKey = getValidatedMoyasarSecretKey(restaurantConfig.payments.secretKeyEnv);
 
   const response = await fetch(`${moyasarApiBase}/invoices`, {
     method: "POST",
@@ -56,7 +58,7 @@ export async function createMoyasarInvoice(input: {
     body: JSON.stringify({
       amount: Math.round(input.order.total * 100),
       currency: input.order.currency,
-      description: `Roma Pastry order ${input.order.id}`,
+      description: `${restaurantConfig.branding.name} order ${input.order.id}`,
       success_url: `${input.origin}/payment/thank-you?payment_id=${encodeURIComponent(input.order.id)}`,
       back_url: `${input.origin}/payment/thank-you?payment=failed`,
       callback_url: `${input.origin}/api/payments/moyasar/callback`,
@@ -76,8 +78,9 @@ export async function createMoyasarInvoice(input: {
   return await response.json() as MoyasarInvoice;
 }
 
-export async function fetchMoyasarInvoice(invoiceId: string) {
-  const secretKey = getValidatedMoyasarSecretKey();
+export async function fetchMoyasarInvoice(invoiceId: string, restaurantId?: string) {
+  const restaurantConfig = getRestaurantConfigById(restaurantId);
+  const secretKey = getValidatedMoyasarSecretKey(restaurantConfig.payments.secretKeyEnv);
 
   const response = await fetch(`${moyasarApiBase}/invoices/${encodeURIComponent(invoiceId)}`, {
     headers: {

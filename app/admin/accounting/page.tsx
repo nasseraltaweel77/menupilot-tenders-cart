@@ -1,9 +1,9 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import type { ReactNode } from "react";
 import { signOut } from "@/app/admin/actions";
 import { formatMoney } from "@/lib/i18n";
 import { getSavedOrders } from "@/lib/local-orders";
-import { romaMeta } from "@/lib/mock-data";
+import { activeRestaurantConfig } from "@/lib/mock-data";
 import type { Order, OrderLineItem } from "@/types/database";
 
 type BestSeller = OrderLineItem;
@@ -16,13 +16,14 @@ export default async function AccountingDashboardPage() {
   const monthSales = sumOrders(monthOrders);
   const averageOrderValue = orders.length ? sumOrders(orders) / orders.length : 0;
   const bestSellers = getBestSellers(orders);
+  const brand = activeRestaurantConfig.branding;
 
   return (
     <main className="min-h-screen bg-[#140b08] text-[#fff7e8]">
       <header className="border-b border-[#d6ad60]/20 bg-[#1c100c] text-[#fff7e8]">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#d6ad60]">Roma Pastry · Accounting</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#d6ad60]">Roma Pastry آ· Accounting</p>
             <h1 className="mt-1 font-serif text-2xl font-semibold tracking-[0.06em]">Sales dashboard</h1>
           </div>
           <nav className="flex flex-wrap items-center gap-2">
@@ -41,8 +42,8 @@ export default async function AccountingDashboardPage() {
       <section className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-[#d6ad60]">{romaMeta.city}</p>
-            <h2 className="text-3xl font-bold text-[#fff7e8]">تقارير مبيعات روما باستري</h2>
+            <p className="text-sm font-semibold text-[#d6ad60]">{brand.city}</p>
+            <h2 className="text-3xl font-bold text-[#fff7e8]">طھظ‚ط§ط±ظٹط± ظ…ط¨ظٹط¹ط§طھ ط±ظˆظ…ط§ ط¨ط§ط³طھط±ظٹ</h2>
             <p className="mt-2 text-sm text-[#cdbd9f]">Read-only order and sales reporting.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -70,7 +71,7 @@ export default async function AccountingDashboardPage() {
                       <p className="font-semibold">{item.name_ar}</p>
                       <p className="text-xs text-[#cdbd9f]">{item.name_en}</p>
                     </div>
-                    <span className="rounded-full bg-[#6f1d2b] px-3 py-1 text-xs font-bold">#{index + 1} · {item.quantity}</span>
+                    <span className="rounded-full bg-[#6f1d2b] px-3 py-1 text-xs font-bold">#{index + 1} آ· {item.quantity}</span>
                   </div>
                 ))
               ) : (
@@ -105,7 +106,7 @@ export default async function AccountingDashboardPage() {
                         <Td>{formatDate(order.created_at)}</Td>
                         <Td>{order.customer_name}</Td>
                         <Td>{order.customer_phone}</Td>
-                        <Td>{order.items.map((item) => `${item.quantity}x ${item.name_ar}`).join("، ")}</Td>
+                        <Td>{order.items.map((item) => `${item.quantity}x ${item.name_ar}`).join("طŒ ")}</Td>
                         <Td>{formatMoney(order.total, "SAR")}</Td>
                         <Td>{order.status}</Td>
                         <Td>
@@ -154,7 +155,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 function AccountingEmptyState() {
   return (
     <div className="rounded-lg border border-dashed border-[#d6ad60]/25 bg-[#140b08]/60 px-4 py-6 text-center">
-      <p className="font-bold text-[#f4d8a4]">لا توجد طلبات بعد</p>
+      <p className="font-bold text-[#f4d8a4]">ظ„ط§ طھظˆط¬ط¯ ط·ظ„ط¨ط§طھ ط¨ط¹ط¯</p>
       <p className="mt-2 font-bold text-[#f4d8a4]">No orders yet</p>
     </div>
   );
@@ -207,3 +208,4 @@ function formatDate(date: string) {
 function extractLocationLink(notes: string | null) {
   return notes?.match(/https:\/\/maps\.google\.com\/\?q=[^\s|]+/)?.[0] || "";
 }
+
